@@ -842,6 +842,7 @@
         <a id="headerNoticeLink" class="rbn-top-link" href="../notice/" title="RBN 同盟通知ジェネレーターを開く">📢 通知作成</a>
       </nav>
       <h1>🐻 RBN 熊編成ナビ</h1>
+      <button type="button" id="bearGuidePill" class="rbn-guide-pill" title="タップで本日の案内役を交代"></button>
     </div>
     <div style="font-size: 0.75rem; color: var(--muted); margin-top: 2px;">
       <span id="masterVersionLabel">S1〜S8完全対応</span>・10ターン期待値＆スキル干渉自動判定モデル
@@ -1095,6 +1096,11 @@
           AI Studio API キー（共通保持）
           <input type="password" id="setAiStudioKey" placeholder="AIzaSy..." />
         </label>
+      </div>
+
+      <div class="settings-box">
+        <div class="settings-box-title">🎭 メンバーアイコン遊び心演出（個別ON/OFF・全ツール共通）</div>
+        <div id="bearPlayfulSettingsMount"></div>
       </div>
 
       <div class="settings-box">
@@ -2322,6 +2328,9 @@
     const text = header + (window._lastExportLines || []).join("\n");
     const ok = await RBNSuite.safeCopyText(text);
     showToast(ok ? "編成表をクリップボードにコピーしました！" : "コピーに失敗しました（ブラウザ権限を確認してください）", ok ? "ok" : "error");
+    if (ok) {
+      RBNSuite.showBearCheerCutin();
+    }
   }
 
   // ==========================================
@@ -2844,6 +2853,45 @@ ${currentJson}`;
   });
 
   window.addEventListener("DOMContentLoaded", initApp);
+
+  // ==================== メンバーアイコン遊び心演出（熊編成ナビ） ====================
+  (function initBearPlayfulFeatures() {
+    const mount = document.getElementById("bearPlayfulSettingsMount");
+    if (mount) RBNSuite.renderPlayfulSettingsPanel(mount);
+
+    const titleEl = document.querySelector("header h1");
+    if (titleEl) RBNSuite.attachTitleShowerEasterEgg(titleEl);
+
+    const guidePill = document.getElementById("bearGuidePill");
+
+    function renderBearGuide(useRandom) {
+      if (!guidePill) return;
+      if (!RBNSuite.isPlayfulEnabled("bearGuide")) {
+        guidePill.classList.remove("show");
+        return;
+      }
+      const picked = useRandom ? RBNSuite.pickRandomAvatars(1)[0] : RBNSuite.pickDailyAvatars(1)[0];
+      if (!picked) {
+        guidePill.classList.remove("show");
+        return;
+      }
+      guidePill.innerHTML = "";
+      const img = document.createElement("img");
+      img.src = picked.icon;
+      img.alt = picked.name;
+      const span = document.createElement("span");
+      span.textContent = `🎖️ 案内役：${picked.name}`;
+      guidePill.append(img, span);
+      guidePill.classList.add("show");
+    }
+
+    if (guidePill) {
+      guidePill.addEventListener("click", () => renderBearGuide(true));
+    }
+
+    RBNSuite.onPlayfulPrefsChange(() => renderBearGuide(false));
+    RBNSuite.ensureMemberAvatarsLoaded(false).then(() => renderBearGuide(false));
+  })();
 </script>
 </body>
 </html>

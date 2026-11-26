@@ -248,6 +248,69 @@
       border: 1px solid var(--rbn-border);
     }
 
+    .portal-settings-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: rgba(38, 51, 73, 0.9);
+      border: 1px solid var(--rbn-border);
+      color: #e2e8f0;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .portal-settings-btn:hover {
+      border-color: var(--rbn-blue);
+      color: var(--rbn-blue);
+    }
+
+    .portal-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.76);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      padding: 14px;
+    }
+
+    .portal-modal-backdrop.open {
+      display: flex;
+    }
+
+    .portal-modal-box {
+      width: 680px;
+      max-width: 100%;
+      max-height: 88vh;
+      overflow-y: auto;
+      background: var(--rbn-card);
+      border: 1px solid var(--rbn-border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 16px 38px rgba(2, 6, 23, 0.65);
+    }
+
+    .portal-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .portal-modal-head h2 {
+      font-size: 1rem;
+      color: var(--rbn-accent);
+    }
+
     @media (max-width: 820px) {
       .tool-grid {
         grid-template-columns: 1fr;
@@ -272,6 +335,7 @@
       </div>
       <div class="portal-header-right">
         <button id="pwaInstallBtn" type="button" class="install-btn">📲 アプリをインストール</button>
+        <button id="portalPlayfulSettingsBtn" type="button" class="portal-settings-btn">⚙️ 演出設定</button>
         <span id="portalFirebaseBadge" class="portal-badge">☁️ Firebase 共通設定連携</span>
       </div>
     </header>
@@ -323,11 +387,36 @@
       </a>
     </nav>
 
+    <!-- 本日のピックアップメンバー（遊び心ON＆アイコン登録時のみ表示） -->
+    <section id="portalPickupBox" class="rbn-pickup-box" aria-label="本日のピックアップメンバー">
+      <div class="rbn-pickup-head">
+        <span>🌟 本日のピックアップメンバー</span>
+        <button id="portalPickupShuffleBtn" type="button" class="rbn-playful-mini-btn">🎲 シャッフル</button>
+      </div>
+      <div id="portalPickupList" class="rbn-pickup-list"></div>
+    </section>
+
+    <!-- フッターの同盟アイコン帯（遊び心ON＆アイコン登録時のみ表示） -->
+    <div id="portalRibbonWrap" class="rbn-ribbon-wrap" aria-label="RBN メンバーアイコン帯">
+      <div id="portalRibbonTrack" class="rbn-ribbon-track"></div>
+    </div>
+
     <footer class="portal-footer">
       <span>各ツール内のヘッダー「🏠 トップ」からいつでもこのメニューに戻れます。</span>
       <span>Firebase DB: <code id="portalDbHost">kingshot-rbn-map</code></span>
     </footer>
   </main>
+
+  <!-- 遊び心演出 個別ON/OFF設定モーダル -->
+  <div id="portalPlayfulModal" class="portal-modal-backdrop" role="dialog" aria-modal="true" aria-label="アイコン遊び心演出の設定">
+    <div class="portal-modal-box">
+      <div class="portal-modal-head">
+        <h2>🎭 メンバーアイコン遊び心演出（個別ON/OFF・全ツール共通）</h2>
+        <button id="closePortalPlayfulModalBtn" type="button" class="rbn-playful-mini-btn">閉じる</button>
+      </div>
+      <div id="portalPlayfulSettingsMount"></div>
+    </div>
+  </div>
 
   <script>
     (function () {
@@ -374,6 +463,175 @@
       window.addEventListener("appinstalled", function () {
         deferredInstallPrompt = null;
         if (installBtn) installBtn.classList.remove("visible");
+      });
+
+      // ==================== メンバーアイコン遊び心演出（トップページ） ====================
+      const portalModal = document.getElementById("portalPlayfulModal");
+      const openPortalModalBtn = document.getElementById("portalPlayfulSettingsBtn");
+      const closePortalModalBtn = document.getElementById("closePortalPlayfulModalBtn");
+      const portalSettingsMount = document.getElementById("portalPlayfulSettingsMount");
+      const pickupBox = document.getElementById("portalPickupBox");
+      const pickupList = document.getElementById("portalPickupList");
+      const pickupShuffleBtn = document.getElementById("portalPickupShuffleBtn");
+      const ribbonWrap = document.getElementById("portalRibbonWrap");
+      const ribbonTrack = document.getElementById("portalRibbonTrack");
+      const titleEl = document.querySelector(".portal-title");
+
+      if (titleEl) {
+        window.RBNSuite.attachTitleShowerEasterEgg(titleEl);
+      }
+
+      if (portalSettingsMount) {
+        window.RBNSuite.renderPlayfulSettingsPanel(portalSettingsMount);
+      }
+      if (openPortalModalBtn && portalModal) {
+        openPortalModalBtn.addEventListener("click", function () {
+          portalModal.classList.add("open");
+        });
+      }
+      if (closePortalModalBtn && portalModal) {
+        closePortalModalBtn.addEventListener("click", function () {
+          portalModal.classList.remove("open");
+        });
+      }
+      if (portalModal) {
+        portalModal.addEventListener("click", function (e) {
+          if (e.target === portalModal) portalModal.classList.remove("open");
+        });
+      }
+      window.RBNSuite.enableModalEscapeClose(function () {
+        if (portalModal) portalModal.classList.remove("open");
+      });
+
+      const PICKUP_ROLES = ["🛡️ 本日の見回り当番", "🍀 今日のラッキーメンバー", "🐻 熊罠サポーター"];
+      const PEEK_LINES = [
+        "熊罠の準備OK？🐻",
+        "今日もよろしく！✨",
+        "都市マップ確認した？🗺️",
+        "朝パン忘れずにね🌅",
+        "集結いつでも乗るよ〜⚔️",
+        "RBNのみんなファイト！🔥",
+        "資源採集いってらっしゃい🌾"
+      ];
+
+      function renderPickupMembers(useRandom) {
+        if (!pickupBox || !pickupList) return;
+        if (!window.RBNSuite.isPlayfulEnabled("portalPickup")) {
+          pickupBox.classList.remove("show");
+          return;
+        }
+        const picked = useRandom
+          ? window.RBNSuite.pickRandomAvatars(3)
+          : window.RBNSuite.pickDailyAvatars(3);
+        if (picked.length === 0) {
+          pickupBox.classList.remove("show");
+          return;
+        }
+        pickupList.innerHTML = "";
+        picked.forEach(function (m, idx) {
+          const chip = document.createElement("div");
+          chip.className = "rbn-pickup-chip";
+          const img = document.createElement("img");
+          img.src = m.icon;
+          img.alt = m.name;
+          const info = document.createElement("div");
+          info.style.minWidth = "0";
+          const role = document.createElement("div");
+          role.className = "rbn-pickup-role";
+          role.textContent = PICKUP_ROLES[idx % PICKUP_ROLES.length];
+          const name = document.createElement("div");
+          name.className = "rbn-pickup-name";
+          name.textContent = m.name;
+          info.append(role, name);
+          chip.append(img, info);
+          pickupList.appendChild(chip);
+        });
+        pickupBox.classList.add("show");
+      }
+
+      if (pickupShuffleBtn) {
+        pickupShuffleBtn.addEventListener("click", function () {
+          renderPickupMembers(true);
+        });
+      }
+
+      function renderFooterRibbon() {
+        if (!ribbonWrap || !ribbonTrack) return;
+        if (!window.RBNSuite.isPlayfulEnabled("portalRibbon")) {
+          ribbonWrap.classList.remove("show");
+          return;
+        }
+        const avatars = window.RBNSuite.readLocalAvatarsSync();
+        if (avatars.length === 0) {
+          ribbonWrap.classList.remove("show");
+          return;
+        }
+        ribbonTrack.innerHTML = "";
+        // シームレスな無限ループのため2周分並べる
+        const baseList = avatars.slice(0, 60);
+        const loopList = baseList.concat(baseList);
+        loopList.forEach(function (m) {
+          const item = document.createElement("span");
+          item.className = "rbn-ribbon-item";
+          const img = document.createElement("img");
+          img.src = m.icon;
+          img.alt = m.name;
+          img.loading = "lazy";
+          const span = document.createElement("span");
+          span.textContent = m.name;
+          item.append(img, span);
+          ribbonTrack.appendChild(item);
+        });
+        const durSec = Math.max(18, Math.min(75, baseList.length * 2.2));
+        ribbonTrack.style.animationDuration = `${durSec.toFixed(1)}s`;
+        ribbonWrap.classList.add("show");
+      }
+
+      let portalPeekTimer = null;
+
+      function triggerPortalPeekNow() {
+        if (!window.RBNSuite.isPlayfulEnabled("portalPeek")) return;
+        if (portalModal && portalModal.classList.contains("open")) return;
+        const m = window.RBNSuite.pickRandomAvatars(1)[0];
+        if (!m) return;
+        const msg = PEEK_LINES[Math.floor(Math.random() * PEEK_LINES.length)];
+        window.RBNSuite.showPeekToast({
+          id: "rbnPortalPeekWidget",
+          member: m,
+          message: msg,
+          hint: "タップで別メンバーに交代",
+          durationMs: 6200,
+          onClick: function () {
+            triggerPortalPeekNow();
+          }
+        });
+      }
+
+      function schedulePortalPeekLoop() {
+        if (portalPeekTimer) clearTimeout(portalPeekTimer);
+        if (!window.RBNSuite.isPlayfulEnabled("portalPeek")) {
+          window.RBNSuite.hidePeekToast("rbnPortalPeekWidget");
+          return;
+        }
+        const waitMs = 15000 + Math.floor(Math.random() * 12000);
+        portalPeekTimer = setTimeout(function () {
+          triggerPortalPeekNow();
+          schedulePortalPeekLoop();
+        }, waitMs);
+      }
+
+      function refreshPortalPlayfulUI() {
+        renderPickupMembers(false);
+        renderFooterRibbon();
+        schedulePortalPeekLoop();
+      }
+
+      window.RBNSuite.onPlayfulPrefsChange(refreshPortalPlayfulUI);
+      window.RBNSuite.ensureMemberAvatarsLoaded(false).then(function (list) {
+        refreshPortalPlayfulUI();
+        if (list.length > 0 && window.RBNSuite.isPlayfulEnabled("portalPeek")) {
+          setTimeout(triggerPortalPeekNow, 1600);
+        }
       });
     })();
   </script>

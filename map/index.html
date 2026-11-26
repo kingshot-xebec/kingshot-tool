@@ -1677,6 +1677,11 @@
       </div>
 
       <div class="settings-section">
+        <div class="settings-section-title">🎭 メンバーアイコン遊び心演出（個別ON/OFF・全ツール共通）</div>
+        <div id="mapPlayfulSettingsMount"></div>
+      </div>
+
+      <div class="settings-section">
         <div class="settings-section-title">📋 共通設定JSON（一括コピー・反映）</div>
         <textarea id="sharedConfigJsonArea" style="height: 110px;"></textarea>
         <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -3004,6 +3009,9 @@
           mobileMapHeight: canvasWrap.style.height || ""
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        if (window.RBNSuite && typeof RBNSuite.refreshPlayfulAvatarsFromLocal === "function") {
+          RBNSuite.refreshPlayfulAvatarsFromLocal();
+        }
       } catch (_) {}
     }
 
@@ -6201,6 +6209,74 @@
     applyEditModeState(false, false);
     initFirebaseCloud();
     resizeCanvas();
+
+    // ==================== メンバーアイコン遊び心演出（都市マップ） ====================
+    (function initMapPlayfulFeatures() {
+      const mount = document.getElementById("mapPlayfulSettingsMount");
+      if (mount) RBNSuite.renderPlayfulSettingsPanel(mount);
+
+      const brandTitle = document.querySelector(".brand-title");
+      if (brandTitle) RBNSuite.attachTitleShowerEasterEgg(brandTitle);
+
+      let mapPeekTimer = null;
+
+      function isAnyModalOpen() {
+        return !!document.querySelector(".modal-backdrop.open");
+      }
+
+      function triggerMapPeekJump() {
+        if (!RBNSuite.isPlayfulEnabled("mapPeekJump")) return;
+        if (isAnyModalOpen() || draggingTarget) return;
+        if (mapSelectionCard && mapSelectionCard.classList.contains("show")) return;
+        if (currentUiMode === "mobile" && mobileTab !== "map") return;
+
+        const placedWithIcon = members.filter((m) => m.icon && m.x !== null && m.y !== null && String(m.name || "").trim() !== "");
+        if (placedWithIcon.length === 0) return;
+
+        const chosen = placedWithIcon[Math.floor(Math.random() * placedWithIcon.length)];
+        const g = gridToGame(chosen.x, chosen.y);
+        RBNSuite.showPeekToast({
+          id: "rbnMapPeekWidget",
+          leftSide: true,
+          member: chosen,
+          message: `X:${g.x}, Y:${g.y} にいます！`,
+          hint: "📍 タップでこの都市へジャンプ",
+          durationMs: 6500,
+          onClick: (_m, wrap) => {
+            if (wrap) wrap.classList.remove("show");
+            const latest = members.find((item) => item.id === chosen.id);
+            if (!latest || latest.x === null || latest.y === null) return;
+            selectedTarget = { kind: "member", id: latest.id };
+            selectedEmptyGridBase = null;
+            isMoveMode = false;
+            facilityTypeSelect.value = latest.type;
+            itemNameInput.value = latest.name;
+            syncToolbar();
+            updateRowSelectionClasses();
+            focusEntityOnMap({ ...latest, kind: "member" }, { switchToMapOnMobile: true });
+          }
+        });
+      }
+
+      function scheduleMapPeekLoop() {
+        if (mapPeekTimer) clearTimeout(mapPeekTimer);
+        if (!RBNSuite.isPlayfulEnabled("mapPeekJump")) {
+          RBNSuite.hidePeekToast("rbnMapPeekWidget");
+          return;
+        }
+        const waitMs = 24000 + Math.floor(Math.random() * 14000);
+        mapPeekTimer = setTimeout(() => {
+          triggerMapPeekJump();
+          scheduleMapPeekLoop();
+        }, waitMs);
+      }
+
+      RBNSuite.onPlayfulPrefsChange(scheduleMapPeekLoop);
+      setTimeout(() => {
+        triggerMapPeekJump();
+        scheduleMapPeekLoop();
+      }, 9000);
+    })();
   </script>
 </body>
 </html>

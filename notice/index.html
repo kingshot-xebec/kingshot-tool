@@ -1323,6 +1323,7 @@
             </button>
             <button class="icon-btn" id="clear-images-btn" style="display:none; white-space: nowrap;">🗑️ クリア</button>
           </div>
+          <div id="noticeWritingBanner" class="rbn-writing-banner" aria-live="polite"></div>
         </div>
 
         <div class="status-msg" id="status-msg"></div>
@@ -1484,6 +1485,11 @@
             <span id="firebase-test-msg" style="font-size: 0.8rem;"></span>
           </div>
         </div>
+      </div>
+
+      <div class="settings-box">
+        <div class="settings-box-title">🎭 メンバーアイコン遊び心演出（個別ON/OFF・全ツール共通）</div>
+        <div id="noticePlayfulSettingsMount"></div>
       </div>
 
       <div class="settings-box">
@@ -3325,10 +3331,53 @@ ${learnedExamples}`;
     }
   });
 
+  let noticeWritingTimer = null;
+  const NOTICE_WRITING_PHRASES = [
+    'が通知文を考え中…✍️',
+    'がイベント情報をチェック中…🔍',
+    'が分かりやすく整理中…📝',
+    'が熊罠・朝パンを確認中…🐻'
+  ];
+
+  function updateNoticeWritingBannerStep() {
+    const banner = document.getElementById('noticeWritingBanner');
+    if (!banner) return;
+    if (!RBNSuite.isPlayfulEnabled('noticeWriting')) {
+      banner.classList.remove('show');
+      return;
+    }
+    const m = RBNSuite.pickRandomAvatars(1)[0];
+    if (!m) {
+      banner.classList.remove('show');
+      return;
+    }
+    const phrase = NOTICE_WRITING_PHRASES[Math.floor(Math.random() * NOTICE_WRITING_PHRASES.length)];
+    banner.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = m.icon;
+    img.alt = m.name;
+    const span = document.createElement('span');
+    span.textContent = `${m.name}${phrase}`;
+    banner.append(img, span);
+    banner.classList.add('show');
+  }
+
   function setLoading(isLoading) {
     generateBtn.disabled = isLoading;
     loadingSpinner.style.display = isLoading ? 'inline-block' : 'none';
     generateBtnText.textContent = isLoading ? 'スクショを解析中...' : '✨ スクショから通知文を生成';
+
+    const banner = document.getElementById('noticeWritingBanner');
+    if (noticeWritingTimer) {
+      clearInterval(noticeWritingTimer);
+      noticeWritingTimer = null;
+    }
+    if (isLoading && RBNSuite.isPlayfulEnabled('noticeWriting')) {
+      updateNoticeWritingBannerStep();
+      noticeWritingTimer = setInterval(updateNoticeWritingBannerStep, 2200);
+    } else if (banner) {
+      banner.classList.remove('show');
+    }
   }
 
   function showStatus(msg, type) {
@@ -3373,6 +3422,19 @@ ${learnedExamples}`;
         : '保存しました（コピーは手動でお試しください）',
       copied ? (cloudOk ? 'ok' : 'warn') : 'warn'
     );
+    if (copied && RBNSuite.isPlayfulEnabled('noticeCopyReact')) {
+      const reactLines = [
+        'よし、同盟チャットに貼ろう！📣',
+        '今日もおつかれさま！✨',
+        'ナイス通知！みんな助かるよ〜🙌',
+        'バッチリ！同盟のみんなへ届けよう🔥'
+      ];
+      RBNSuite.showPeekToast({
+        id: 'rbnNoticeCopyReactWidget',
+        message: reactLines[Math.floor(Math.random() * reactLines.length)],
+        durationMs: 3600
+      });
+    }
     setTimeout(() => {
       saveCopyBtn.textContent = originalText;
     }, 2200);
@@ -3403,6 +3465,17 @@ ${learnedExamples}`;
   });
 
   init();
+
+  // ==================== メンバーアイコン遊び心演出（同盟通知ジェネレーター） ====================
+  (function initNoticePlayfulFeatures() {
+    const mount = document.getElementById('noticePlayfulSettingsMount');
+    if (mount) RBNSuite.renderPlayfulSettingsPanel(mount);
+
+    const titleEl = document.querySelector('header h1');
+    if (titleEl) RBNSuite.attachTitleShowerEasterEgg(titleEl);
+
+    RBNSuite.ensureMemberAvatarsLoaded(false);
+  })();
 </script>
 
 </body>
