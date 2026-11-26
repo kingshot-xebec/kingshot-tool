@@ -841,6 +841,7 @@
       <div id="coordInfo" class="info hide-on-mobile">選択座標：なし</div>
       <div id="zoomInfo" class="info hide-on-mobile">倍率：100%</div>
       <button id="resetBtn" type="button">表示リセット</button>
+      <button id="reloadPageBtn" type="button" title="ページを再読み込みして最新の状態に更新">🔄 再読込</button>
       <button id="exportPngBtn" class="success" type="button">PNG保存</button>
       <button id="uiModeToggleBtn" class="ui-switch-btn" type="button" title="PC表示とスマホ表示を手動切り替え">スマホUIへ切替</button>
       <button id="openSettingsModalBtn" class="settings-btn" type="button">⚙️ 設定</button>
@@ -1388,6 +1389,7 @@
     const submitPinBtn = document.getElementById("submitPinBtn");
 
     const resetBtn = document.getElementById("resetBtn");
+    const reloadPageBtn = document.getElementById("reloadPageBtn");
     const exportPngBtn = document.getElementById("exportPngBtn");
     const uiModeToggleBtn = document.getElementById("uiModeToggleBtn");
     const mobileViewTabs = document.getElementById("mobileViewTabs");
@@ -3729,6 +3731,13 @@
       zoomInfo.textContent = "倍率：100%";
       render();
     });
+
+    if (reloadPageBtn) {
+      reloadPageBtn.addEventListener("click", () => {
+        RBNSuite.showToast("🔄 最新状態へ再読み込み中...", "info", 1500);
+        setTimeout(() => window.location.reload(), 120);
+      });
+    }
 
     window.addEventListener("resize", resizeCanvas);
 
