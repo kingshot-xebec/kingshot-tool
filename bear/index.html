@@ -825,9 +825,102 @@
       min-height: 28px !important;
     }
 
+    .troop-summary-box {
+      margin-top: 12px;
+      padding: 11px 13px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.82rem;
+    }
+    .troop-summary-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+    .troop-summary-badge {
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+    }
+    .troop-summary-badge.ok {
+      background: rgba(16, 185, 129, 0.16);
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      color: #6ee7b7;
+    }
+    .troop-summary-badge.warn {
+      background: rgba(245, 158, 11, 0.16);
+      border: 1px solid rgba(245, 158, 11, 0.55);
+      color: #fcd34d;
+    }
+    .troop-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .troop-summary-cell {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .troop-summary-lbl {
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .troop-summary-val {
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .troop-summary-sub {
+      font-size: 0.72rem;
+      color: #93c5fd;
+    }
+    .exact-pct-bar {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(14, 165, 233, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 0.78rem;
+      color: #e0f2fe;
+    }
+    .exact-pct-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .exact-pct-label input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--green);
+      cursor: pointer;
+    }
+
     @media (max-width: 640px) {
       th, td { padding: 8px 6px; font-size: 0.8rem; }
       .hero-list { grid-template-columns: 1fr; }
+      .troop-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>
@@ -941,6 +1034,14 @@
         <input type="number" id="cap6" min="1000" step="1000" value="125000" oninput="recalc()" />
       </div>
     </div>
+
+    <div class="exact-pct-bar">
+      <label class="exact-pct-label">
+        <input type="checkbox" id="exactPctMode" checked onchange="recalc()" />
+        <span>🎯 ゲーム内％ぴったし配分（1%刻み・6軍目不足防止）</span>
+      </label>
+      <span style="font-size:0.72rem; color:#bae6fd;">表示された整数％を自集結→乗り1〜6軍へそのまま入力しても兵が不足しないよう計算します</span>
+    </div>
   </section>
 
   <section class="card">
@@ -1051,6 +1152,7 @@
     </table>
   </div>
   <div id="mobileResultCards" class="mobile-result-cards"></div>
+  <div id="troopSummaryBox" class="troop-summary-box" aria-live="polite"></div>
 </section>
 
 <!-- 共通設定モーダル（リンク設定・Firebase・AI Studio API・共通JSON） -->
@@ -1813,11 +1915,18 @@
         if (parsed.maxArcPct === undefined || parsed.maxArcPct === null || Number.isNaN(Number(parsed.maxArcPct))) {
           userState.maxArcPct = 90;
         }
+        if (typeof parsed.exactPctMode !== "boolean") {
+          userState.exactPctMode = true;
+        }
         if (!Array.isArray(userState.marchCaps) || userState.marchCaps.length < 7) {
           const fallback = parsed.marchCap || 125000;
           userState.marchCaps = [140000, fallback, fallback, fallback, fallback, fallback, fallback];
         }
       } catch (e) {}
+    }
+
+    if (typeof userState.exactPctMode !== "boolean") {
+      userState.exactPctMode = true;
     }
 
     masterData.heroes.forEach(h => {
@@ -1831,6 +1940,8 @@
     document.getElementById("squadCount").value = userState.squadCount;
     document.getElementById("minTroop").value = userState.minTroop;
     document.getElementById("maxArcPct").value = userState.maxArcPct;
+    const exactPctEl = document.getElementById("exactPctMode");
+    if (exactPctEl) exactPctEl.checked = userState.exactPctMode !== false;
     for (let i = 0; i < 7; i++) {
       document.getElementById(`cap${i}`).value = userState.marchCaps[i] || 125000;
     }
@@ -1883,6 +1994,8 @@
     userState.minTroop = Math.max(0, Number(document.getElementById("minTroop").value) || 0);
     const rawArcPct = Number(document.getElementById("maxArcPct").value);
     userState.maxArcPct = Number.isFinite(rawArcPct) ? Math.min(100, Math.max(0, rawArcPct)) : 90;
+    const exactPctEl = document.getElementById("exactPctMode");
+    userState.exactPctMode = exactPctEl ? !!exactPctEl.checked : true;
     for (let i = 0; i < 7; i++) {
       userState.marchCaps[i] = Math.max(1000, Number(document.getElementById(`cap${i}`).value) || 100000);
     }
@@ -2155,10 +2268,8 @@
     const n = userState.squadCount;
     const caps = userState.marchCaps;
     const minT = userState.minTroop;
-    const maxArcCapPerSquad = caps.map(c => Math.floor(c * ((userState.maxArcPct ?? 90) / 100)));
-    let remInf = userState.infTotal;
-    let remCav = userState.cavTotal;
-    let remArc = userState.arcTotal;
+    const maxArcPctVal = Math.min(100, Math.max(0, Math.round(userState.maxArcPct ?? 90)));
+    const useExactPct = userState.exactPctMode !== false;
 
     const arcRatios = [];
     if (userState.stance === "top") {
@@ -2174,60 +2285,184 @@
       for (let i = 1; i < n; i++) arcRatios.push(supPattern[i - 1] || 0.50);
     }
 
-    const squads = [];
-    for (let i = 0; i < n; i++) {
-      let capLeft = caps[i];
-      const aInf = Math.min(remInf, minT, capLeft); remInf -= aInf; capLeft -= aInf;
-      const aCav = Math.min(remCav, minT, capLeft); remCav -= aCav; capLeft -= aCav;
-      const arcAllowedByCap = Math.max(0, maxArcCapPerSquad[i]);
-      const aArc = Math.min(remArc, minT, capLeft, arcAllowedByCap); remArc -= aArc; capLeft -= aArc;
-      squads.push({ inf: aInf, cav: aCav, arc: aArc, cap: caps[i], maxArc: maxArcCapPerSquad[i] });
-    }
-
     const fillOrder = userState.stance === "top"
       ? [...Array(n).keys()]
       : [1, 2, 0, 3, 4, 5, 6].filter(idx => idx < n);
 
-    fillOrder.forEach(idx => {
-      const s = squads[idx];
-      const currentTotal = s.inf + s.cav + s.arc;
-      const room = Math.max(0, s.cap - currentTotal);
-      const arcRoom = Math.max(0, s.maxArc - s.arc);
-      const targetArc = Math.min(s.maxArc, Math.floor(s.cap * arcRatios[idx]));
-      const needArc = Math.max(0, Math.min(room, arcRoom, targetArc - s.arc, remArc));
-      s.arc += needArc;
-      remArc -= needArc;
-    });
+    const squads = [];
 
-    fillOrder.forEach(idx => {
-      const s = squads[idx];
-      let room = Math.max(0, s.cap - (s.inf + s.cav + s.arc));
-      const arcRoom = Math.max(0, s.maxArc - s.arc);
-      if (room > 0 && arcRoom > 0 && remArc > 0) {
-        const add = Math.min(room, arcRoom, remArc);
-        s.arc += add; remArc -= add; room -= add;
+    if (useExactPct) {
+      // ゲーム内1%刻み入力でも全7部隊合計が所持兵数を絶対に超えない厳密％配分
+      // 切り上げ側（Math.ceil）で予約コストを判定するため、端数が出ても6軍目で不足しない
+      const reserveCost = (cap, pct) => (pct <= 0 ? 0 : Math.ceil((cap * pct) / 100));
+      const maxAddPct = (cap, curPct, wantDelta, remTroops) => {
+        if (wantDelta <= 0 || remTroops <= 0) return 0;
+        const baseCost = reserveCost(cap, curPct);
+        let best = 0;
+        for (let d = 1; d <= wantDelta; d++) {
+          if (reserveCost(cap, curPct + d) - baseCost <= remTroops) {
+            best = d;
+          } else {
+            break;
+          }
+        }
+        return best;
+      };
+
+      let remInf = userState.infTotal;
+      let remCav = userState.cavTotal;
+      let remArc = userState.arcTotal;
+
+      // Phase 1: 全0〜(n-1)部隊に最低確保人数を満たす整数％を先に確保
+      for (let i = 0; i < n; i++) {
+        const cap = caps[i];
+        const minPct = minT > 0 ? Math.min(100, Math.ceil((minT / cap) * 100)) : 0;
+        let pInf = 0;
+        let pCav = 0;
+        let pArc = 0;
+
+        const addInf = maxAddPct(cap, pInf, Math.min(minPct, 100), remInf);
+        remInf -= reserveCost(cap, pInf + addInf) - reserveCost(cap, pInf);
+        pInf += addInf;
+
+        const addCav = maxAddPct(cap, pCav, Math.min(minPct, 100 - pInf), remCav);
+        remCav -= reserveCost(cap, pCav + addCav) - reserveCost(cap, pCav);
+        pCav += addCav;
+
+        const arcLimit = Math.min(maxArcPctVal, 100 - pInf - pCav);
+        const addArc = maxAddPct(cap, pArc, Math.min(minPct, arcLimit), remArc);
+        remArc -= reserveCost(cap, pArc + addArc) - reserveCost(cap, pArc);
+        pArc += addArc;
+
+        squads.push({ cap, pInf, pCav, pArc, inf: 0, cav: 0, arc: 0 });
       }
-      if (room > 0 && remCav > 0) {
-        const add = Math.min(room, remCav);
-        s.cav += add; remCav -= add; room -= add;
+
+      // Phase 2: 立ち位置の目標弓比率（整数％）まで優先順で弓を配分
+      fillOrder.forEach(idx => {
+        const s = squads[idx];
+        const roomPct = Math.max(0, 100 - (s.pInf + s.pCav + s.pArc));
+        const targetArcPct = Math.min(maxArcPctVal, Math.floor(arcRatios[idx] * 100));
+        const wantArc = Math.max(0, Math.min(roomPct, targetArcPct - s.pArc));
+        const add = maxAddPct(s.cap, s.pArc, wantArc, remArc);
+        if (add > 0) {
+          remArc -= reserveCost(s.cap, s.pArc + add) - reserveCost(s.cap, s.pArc);
+          s.pArc += add;
+        }
+      });
+
+      // Phase 3: 残り枠（〜100%）を弓（上限まで）→騎→歩の順で1%単位で埋める
+      fillOrder.forEach(idx => {
+        const s = squads[idx];
+        let roomPct = Math.max(0, 100 - (s.pInf + s.pCav + s.pArc));
+
+        if (roomPct > 0 && remArc > 0) {
+          const arcRoom = Math.max(0, maxArcPctVal - s.pArc);
+          const add = maxAddPct(s.cap, s.pArc, Math.min(roomPct, arcRoom), remArc);
+          if (add > 0) {
+            remArc -= reserveCost(s.cap, s.pArc + add) - reserveCost(s.cap, s.pArc);
+            s.pArc += add;
+            roomPct -= add;
+          }
+        }
+        if (roomPct > 0 && remCav > 0) {
+          const add = maxAddPct(s.cap, s.pCav, roomPct, remCav);
+          if (add > 0) {
+            remCav -= reserveCost(s.cap, s.pCav + add) - reserveCost(s.cap, s.pCav);
+            s.pCav += add;
+            roomPct -= add;
+          }
+        }
+        if (roomPct > 0 && remInf > 0) {
+          const add = maxAddPct(s.cap, s.pInf, roomPct, remInf);
+          if (add > 0) {
+            remInf -= reserveCost(s.cap, s.pInf + add) - reserveCost(s.cap, s.pInf);
+            s.pInf += add;
+            roomPct -= add;
+          }
+        }
+      });
+
+      // 表示用の人数を整数％から算出（100の倍数定員なら完全に厳密一致、端数定員でも定員を超えない）
+      squads.forEach(s => {
+        s.inf = Math.round((s.cap * s.pInf) / 100);
+        s.cav = Math.round((s.cap * s.pCav) / 100);
+        s.arc = Math.round((s.cap * s.pArc) / 100);
+        const pSum = s.pInf + s.pCav + s.pArc;
+        const tSum = s.inf + s.cav + s.arc;
+        if (pSum === 100 && tSum !== s.cap) {
+          const diff = s.cap - tSum;
+          if (s.arc >= s.cav && s.arc >= s.inf) s.arc += diff;
+          else if (s.cav >= s.inf) s.cav += diff;
+          else s.inf += diff;
+        }
+      });
+    } else {
+      // 従来の1人単位・実数ぴったり配分モード
+      const maxArcCapPerSquad = caps.map(c => Math.floor(c * (maxArcPctVal / 100)));
+      let remInf = userState.infTotal;
+      let remCav = userState.cavTotal;
+      let remArc = userState.arcTotal;
+
+      for (let i = 0; i < n; i++) {
+        let capLeft = caps[i];
+        const aInf = Math.min(remInf, minT, capLeft); remInf -= aInf; capLeft -= aInf;
+        const aCav = Math.min(remCav, minT, capLeft); remCav -= aCav; capLeft -= aCav;
+        const arcAllowedByCap = Math.max(0, maxArcCapPerSquad[i]);
+        const aArc = Math.min(remArc, minT, capLeft, arcAllowedByCap); remArc -= aArc; capLeft -= aArc;
+        squads.push({ inf: aInf, cav: aCav, arc: aArc, cap: caps[i], maxArc: maxArcCapPerSquad[i] });
       }
-      if (room > 0 && remInf > 0) {
-        const add = Math.min(room, remInf);
-        s.inf += add; remInf -= add; room -= add;
-      }
-    });
+
+      fillOrder.forEach(idx => {
+        const s = squads[idx];
+        const currentTotal = s.inf + s.cav + s.arc;
+        const room = Math.max(0, s.cap - currentTotal);
+        const arcRoom = Math.max(0, s.maxArc - s.arc);
+        const targetArc = Math.min(s.maxArc, Math.floor(s.cap * arcRatios[idx]));
+        const needArc = Math.max(0, Math.min(room, arcRoom, targetArc - s.arc, remArc));
+        s.arc += needArc;
+        remArc -= needArc;
+      });
+
+      fillOrder.forEach(idx => {
+        const s = squads[idx];
+        let room = Math.max(0, s.cap - (s.inf + s.cav + s.arc));
+        const arcRoom = Math.max(0, s.maxArc - s.arc);
+        if (room > 0 && arcRoom > 0 && remArc > 0) {
+          const add = Math.min(room, arcRoom, remArc);
+          s.arc += add; remArc -= add; room -= add;
+        }
+        if (room > 0 && remCav > 0) {
+          const add = Math.min(room, remCav);
+          s.cav += add; remCav -= add; room -= add;
+        }
+        if (room > 0 && remInf > 0) {
+          const add = Math.min(room, remInf);
+          s.inf += add; remInf -= add; room -= add;
+        }
+      });
+
+      squads.forEach(s => {
+        const total = s.inf + s.cav + s.arc;
+        s.pInf = total ? Math.round((s.inf / total) * 100) : 0;
+        s.pCav = total ? Math.round((s.cav / total) * 100) : 0;
+        s.pArc = total ? Math.max(0, 100 - s.pInf - s.pCav) : 0;
+      });
+    }
 
     const tbody = document.getElementById("resultBody");
     const mobileCardsEl = document.getElementById("mobileResultCards");
+    const summaryBoxEl = document.getElementById("troopSummaryBox");
     let rowsHtml = "";
     let mobileHtml = "";
     window._lastExportLines = [];
 
     squads.forEach((s, i) => {
       const total = s.inf + s.cav + s.arc;
-      const pInf = total ? Math.round((s.inf / total) * 100) : 0;
-      const pCav = total ? Math.round((s.cav / total) * 100) : 0;
-      const pArc = total ? Math.max(0, 100 - pInf - pCav) : 0;
+      const pInf = s.pInf;
+      const pCav = s.pCav;
+      const pArc = s.pArc;
+      const pSum = pInf + pCav + pArc;
+      const ratioNote = useExactPct && pSum < 100 ? `（定員比 計${pSum}%）` : "";
 
       if (i === 0) {
         const heroStr = `${rInf} / ${rCav} / ${rArc}`;
@@ -2240,7 +2475,7 @@
             <td><strong style="color:var(--accent);">${s.arc.toLocaleString()}</strong></td>
             <td>
               <strong>${total.toLocaleString()}</strong> <span style="font-size:0.75rem; color:var(--muted);">/ ${s.cap.toLocaleString()}</span>
-              <div style="font-size:0.75rem; color:var(--muted);">${pInf}% / ${pCav}% / ${pArc}%</div>
+              <div style="font-size:0.75rem; color:var(--muted);">${pInf}% / ${pCav}% / ${pArc}%${ratioNote}</div>
               <div class="ratio-bar">
                 <div class="r-inf" style="width:${pInf}%"></div>
                 <div class="r-cav" style="width:${pCav}%"></div>
@@ -2268,7 +2503,7 @@
             </div>
           </div>
         `;
-        window._lastExportLines.push(`【自集結】${heroStr}｜歩:${s.inf.toLocaleString()} / 騎:${s.cav.toLocaleString()} / 弓:${s.arc.toLocaleString()}（${pInf}/${pCav}/${pArc}%）`);
+        window._lastExportLines.push(`【自集結】${heroStr}｜歩:${s.inf.toLocaleString()} / 騎:${s.cav.toLocaleString()} / 弓:${s.arc.toLocaleString()}（${pInf}/${pCav}/${pArc}%${ratioNote}）`);
       } else {
         const leader = candidates[i - 1];
         const leaderName = leader ? `${leader.name} (Lv.${userState.lvMap[leader.id] || 5})` : "未設定（自由枠）";
@@ -2287,7 +2522,7 @@
             <td><strong>${s.arc.toLocaleString()}</strong></td>
             <td>
               <strong>${total.toLocaleString()}</strong> <span style="font-size:0.75rem; color:var(--muted);">/ ${s.cap.toLocaleString()}</span>
-              <div style="font-size:0.75rem; color:var(--muted);">${pInf}% / ${pCav}% / ${pArc}%</div>
+              <div style="font-size:0.75rem; color:var(--muted);">${pInf}% / ${pCav}% / ${pArc}%${ratioNote}</div>
               <div class="ratio-bar">
                 <div class="r-inf" style="width:${pInf}%"></div>
                 <div class="r-cav" style="width:${pCav}%"></div>
@@ -2315,12 +2550,66 @@
             </div>
           </div>
         `;
-        window._lastExportLines.push(`【乗り${i}軍】左端:${leaderName}｜歩:${s.inf.toLocaleString()} / 騎:${s.cav.toLocaleString()} / 弓:${s.arc.toLocaleString()}（${pInf}/${pCav}/${pArc}%）`);
+        window._lastExportLines.push(`【乗り${i}軍】左端:${leaderName}｜歩:${s.inf.toLocaleString()} / 騎:${s.cav.toLocaleString()} / 弓:${s.arc.toLocaleString()}（${pInf}/${pCav}/${pArc}%${ratioNote}）`);
       }
     });
 
     tbody.innerHTML = rowsHtml;
     if (mobileCardsEl) mobileCardsEl.innerHTML = mobileHtml;
+
+    if (summaryBoxEl) {
+      const usedInf = squads.reduce((acc, s) => acc + s.inf, 0);
+      const usedCav = squads.reduce((acc, s) => acc + s.cav, 0);
+      const usedArc = squads.reduce((acc, s) => acc + s.arc, 0);
+      const usedAll = usedInf + usedCav + usedArc;
+      const capAll = squads.reduce((acc, s) => acc + s.cap, 0);
+      const ownedAll = userState.infTotal + userState.cavTotal + userState.arcTotal;
+
+      const leftInf = Math.max(0, userState.infTotal - usedInf);
+      const leftCav = Math.max(0, userState.cavTotal - usedCav);
+      const leftArc = Math.max(0, userState.arcTotal - usedArc);
+      const leftAll = Math.max(0, ownedAll - usedAll);
+      const allFull = squads.every(s => (useExactPct ? s.pInf + s.pCav + s.pArc === 100 : s.inf + s.cav + s.arc >= s.cap));
+
+      let badgeHtml = "";
+      if (useExactPct && allFull) {
+        badgeHtml = `<span class="troop-summary-badge ok">✅ 1%刻み計算済：0〜${n - 1}軍を％通りに出しても不足しません</span>`;
+      } else if (useExactPct && !allFull) {
+        const shortCap = Math.max(0, capAll - usedAll);
+        badgeHtml = `<span class="troop-summary-badge warn">⚠️ 全${n}部隊の定員に対し 約${shortCap.toLocaleString()}人 分の空きあり（総兵力不足または1%未満の端数／弓上限）</span>`;
+      } else {
+        badgeHtml = `<span class="troop-summary-badge warn">ℹ️ 実数優先モード（ゲーム内で％入力する場合は端数に注意）</span>`;
+      }
+
+      summaryBoxEl.innerHTML = `
+        <div class="troop-summary-head">
+          <span>📦 全${n}部隊 出撃合計 ＆ 余り兵数</span>
+          ${badgeHtml}
+        </div>
+        <div class="troop-summary-grid">
+          <div class="troop-summary-cell">
+            <span class="troop-summary-lbl">🛡️ 歩兵 出撃</span>
+            <span class="troop-summary-val">${usedInf.toLocaleString()} / ${userState.infTotal.toLocaleString()}</span>
+            <span class="troop-summary-sub">余り：${leftInf.toLocaleString()}人</span>
+          </div>
+          <div class="troop-summary-cell">
+            <span class="troop-summary-lbl">🐎 騎兵 出撃</span>
+            <span class="troop-summary-val">${usedCav.toLocaleString()} / ${userState.cavTotal.toLocaleString()}</span>
+            <span class="troop-summary-sub">余り：${leftCav.toLocaleString()}人</span>
+          </div>
+          <div class="troop-summary-cell">
+            <span class="troop-summary-lbl">🏹 弓兵 出撃</span>
+            <span class="troop-summary-val" style="color:var(--accent);">${usedArc.toLocaleString()} / ${userState.arcTotal.toLocaleString()}</span>
+            <span class="troop-summary-sub">余り：${leftArc.toLocaleString()}人</span>
+          </div>
+          <div class="troop-summary-cell">
+            <span class="troop-summary-lbl">📊 全兵種 出撃 / 定員計</span>
+            <span class="troop-summary-val">${usedAll.toLocaleString()} / ${capAll.toLocaleString()}</span>
+            <span class="troop-summary-sub">待機余り計：${leftAll.toLocaleString()}人</span>
+          </div>
+        </div>
+      `;
+    }
   }
 
   async function copyFormation() {
