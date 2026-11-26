@@ -802,7 +802,11 @@
 <body class="view-only">
   <header class="app-header">
     <div class="brand-block">
-      <a class="rbn-top-link rbn-top-link--compact" href="../" title="トップメニューへ戻る">🏠 トップ</a>
+      <nav class="rbn-quick-nav" aria-label="ツール切替">
+        <a class="rbn-top-link rbn-top-link--compact" href="../" title="トップメニューへ戻る">🏠 トップ</a>
+        <a id="headerBearNavLink" class="rbn-top-link rbn-top-link--compact" href="../bear/" title="RBN 熊編成ナビを開く">🐻 熊編成</a>
+        <a id="headerNoticeGenLink" class="rbn-top-link rbn-top-link--compact" href="../notice/" title="RBN 同盟通知ジェネレーターを開く">📢 通知作成</a>
+      </nav>
       <h3 class="brand-title">🗺️ RBN 都市マップ（40×40）</h3>
       <div id="centerBaseBadge" class="info">中心基準 X:386, Y:792</div>
       <div id="modeBadge" class="mode-badge">🔒 閲覧モード</div>
@@ -1386,6 +1390,10 @@
       previewCityMapLink.href = settingCityMapUrl.value || "#";
       previewBearNavLink.href = settingBearNavUrl.value || "#";
       previewNoticeGenLink.href = settingNoticeGenUrl.value || "#";
+      const headerBearEl = document.getElementById("headerBearNavLink");
+      const headerNoticeEl = document.getElementById("headerNoticeGenLink");
+      if (headerBearEl) headerBearEl.href = settingBearNavUrl.value || "../bear/";
+      if (headerNoticeEl) headerNoticeEl.href = settingNoticeGenUrl.value || "../notice/";
 
       settingFirebaseDbUrl.value = sharedSettings.firebase.databaseUrl || firebaseConfig.databaseURL;
       settingAiStudioApiKey.value = sharedSettings.ai.studioApiKey || "";
