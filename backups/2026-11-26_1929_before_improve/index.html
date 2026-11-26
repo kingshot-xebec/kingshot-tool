@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ks tool｜RBN Kingshot ツールポータル</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ks tool" />
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
+  <link rel="stylesheet" href="./assets/common.css" />
+  <script src="./assets/firebase-init.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--rbn-font-sans);
+      background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.1), transparent 42%),
+        radial-gradient(circle at bottom left, rgba(245, 158, 11, 0.08), transparent 45%),
+        var(--rbn-bg);
+      color: var(--rbn-text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      line-height: 1.55;
+    }
+
+    .portal-shell {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .portal-header {
+      background: linear-gradient(135deg, var(--rbn-card) 0%, var(--rbn-bg-deep) 100%);
+      border: 1px solid var(--rbn-border);
+      border-radius: 14px;
+      padding: 20px 22px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 10px 28px rgba(2, 6, 23, 0.45);
+    }
+
+    .portal-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--rbn-accent);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 0.02em;
+    }
+
+    .portal-subtitle {
+      margin-top: 4px;
+      font-size: 0.85rem;
+      color: var(--rbn-muted);
+    }
+
+    .portal-header-right {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .install-btn {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #0284c7;
+      border: 1px solid #38bdf8;
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 0.15s ease;
+    }
+
+    .install-btn:hover {
+      background: #0369a1;
+    }
+
+    .install-btn.visible {
+      display: inline-flex;
+    }
+
+    .portal-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #6ee7b7;
+      white-space: nowrap;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .tool-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 20px;
+      border-radius: 14px;
+      background: var(--rbn-card);
+      border: 1px solid var(--rbn-border);
+      color: inherit;
+      text-decoration: none;
+      transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+      box-shadow: 0 6px 20px rgba(2, 6, 23, 0.32);
+    }
+
+    .tool-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--rbn-blue);
+      background: #223047;
+      box-shadow: 0 12px 28px rgba(2, 6, 23, 0.5);
+    }
+
+    .tool-card:focus-visible {
+      outline: 2px solid var(--rbn-blue);
+      outline-offset: 2px;
+    }
+
+    .tool-icon-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .tool-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.45rem;
+      background: var(--rbn-card-sub);
+      border: 1px solid var(--rbn-border);
+    }
+
+    .tool-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--rbn-border);
+      background: rgba(15, 23, 42, 0.55);
+      color: #cbd5e1;
+    }
+
+    .tool-card--map .tool-tag {
+      color: #7dd3fc;
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(56, 189, 248, 0.12);
+    }
+
+    .tool-card--bear .tool-tag {
+      color: #fcd34d;
+      border-color: rgba(245, 158, 11, 0.42);
+      background: rgba(245, 158, 11, 0.12);
+    }
+
+    .tool-card--notice .tool-tag {
+      color: #6ee7b7;
+      border-color: rgba(16, 185, 129, 0.42);
+      background: rgba(16, 185, 129, 0.12);
+    }
+
+    .tool-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--rbn-text);
+      margin-top: 10px;
+    }
+
+    .tool-desc {
+      font-size: 0.84rem;
+      color: var(--rbn-muted);
+      margin-top: 6px;
+    }
+
+    .tool-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 12px;
+      border-top: 1px solid rgba(51, 65, 85, 0.7);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--rbn-blue);
+    }
+
+    .tool-meta code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.72rem;
+      color: var(--rbn-muted);
+      font-weight: 500;
+    }
+
+    .portal-footer {
+      text-align: center;
+      font-size: 0.76rem;
+      color: var(--rbn-muted);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 0 4px;
+    }
+
+    .portal-footer code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #cbd5e1;
+      background: rgba(30, 41, 59, 0.8);
+      padding: 2px 6px;
+      border-radius: 5px;
+      border: 1px solid var(--rbn-border);
+    }
+
+    @media (max-width: 820px) {
+      .tool-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .portal-header {
+        padding: 16px;
+      }
+
+      .portal-title {
+        font-size: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="portal-shell">
+    <header class="portal-header">
+      <div>
+        <h1 class="portal-title">🏰 RBN Kingshot ツールポータル</h1>
+        <p class="portal-subtitle">都市マップ管理・熊編成ナビ・同盟通知ジェネレーターの統合メニュー</p>
+      </div>
+      <div class="portal-header-right">
+        <button id="pwaInstallBtn" type="button" class="install-btn">📲 アプリをインストール</button>
+        <span id="portalFirebaseBadge" class="portal-badge">☁️ Firebase 共通設定連携</span>
+      </div>
+    </header>
+
+    <nav class="tool-grid" aria-label="ツール選択メニュー">
+      <a id="portalLinkMap" class="tool-card tool-card--map" href="./map/">
+        <div>
+          <div class="tool-icon-row">
+            <span class="tool-icon" aria-hidden="true">🗺️</span>
+            <span class="tool-tag">都市配置・クラウド共有</span>
+          </div>
+          <h2 class="tool-name">RBN 都市マップ</h2>
+          <p class="tool-desc">40×40グリッドでの都市・同盟本部・熊罠・旗の配置管理、メンバー100名名簿、PNG出力・バックアップ対応。</p>
+        </div>
+        <div class="tool-meta">
+          <code>./map/</code>
+          <span>開く →</span>
+        </div>
+      </a>
+
+      <a id="portalLinkBear" class="tool-card tool-card--bear" href="./bear/">
+        <div>
+          <div class="tool-icon-row">
+            <span class="tool-icon" aria-hidden="true">🐻</span>
+            <span class="tool-tag">巨熊狩猟 S1〜S8対応</span>
+          </div>
+          <h2 class="tool-name">RBN 熊編成ナビ</h2>
+          <p class="tool-desc">所持兵力と出撃枠から自集結・乗り1〜6軍の最適兵力配分と英雄編成・スキル干渉を自動計算。</p>
+        </div>
+        <div class="tool-meta">
+          <code>./bear/</code>
+          <span>開く →</span>
+        </div>
+      </a>
+
+      <a id="portalLinkNotice" class="tool-card tool-card--notice" href="./notice/">
+        <div>
+          <div class="tool-icon-row">
+            <span class="tool-icon" aria-hidden="true">📢</span>
+            <span class="tool-tag">同盟連絡・AI/手動作成</span>
+          </div>
+          <h2 class="tool-name">RBN 同盟通知ジェネレーター</h2>
+          <p class="tool-desc">イベント・熊罠・朝パン・採取/訓練の方針から同盟通知文を生成。早見表・履歴・比率表もクラウド同期。</p>
+        </div>
+        <div class="tool-meta">
+          <code>./notice/</code>
+          <span>開く →</span>
+        </div>
+      </a>
+    </nav>
+
+    <footer class="portal-footer">
+      <span>各ツール内のヘッダー「🏠 トップ」からいつでもこのメニューに戻れます。</span>
+      <span>Firebase DB: <code id="portalDbHost">kingshot-rbn-map</code></span>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+      if (!window.RBNSuite) return;
+
+      const settings = window.RBNSuite.loadSharedSettings({ fromRoot: true });
+      const mapEl = document.getElementById("portalLinkMap");
+      const bearEl = document.getElementById("portalLinkBear");
+      const noticeEl = document.getElementById("portalLinkNotice");
+      const dbHostEl = document.getElementById("portalDbHost");
+
+      if (mapEl && settings.links.cityMapUrl) mapEl.href = settings.links.cityMapUrl;
+      if (bearEl && settings.links.bearNavUrl) bearEl.href = settings.links.bearNavUrl;
+      if (noticeEl && settings.links.noticeGenUrl) noticeEl.href = settings.links.noticeGenUrl;
+
+      if (dbHostEl && settings.firebase.databaseUrl) {
+        try {
+          dbHostEl.textContent = new URL(settings.firebase.databaseUrl).hostname;
+        } catch (_) {
+          dbHostEl.textContent = settings.firebase.databaseUrl;
+        }
+      }
+
+      // PWA インストールプロンプト制御（対応ブラウザのみボタン表示）
+      let deferredInstallPrompt = null;
+      const installBtn = document.getElementById("pwaInstallBtn");
+      window.addEventListener("beforeinstallprompt", function (e) {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        if (installBtn) installBtn.classList.add("visible");
+      });
+      if (installBtn) {
+        installBtn.addEventListener("click", async function () {
+          if (!deferredInstallPrompt) return;
+          deferredInstallPrompt.prompt();
+          try {
+            await deferredInstallPrompt.userChoice;
+          } catch (_) {}
+          deferredInstallPrompt = null;
+          installBtn.classList.remove("visible");
+        });
+      }
+      window.addEventListener("appinstalled", function () {
+        deferredInstallPrompt = null;
+        if (installBtn) installBtn.classList.remove("visible");
+      });
+    })();
+  </script>
+</body>
+</html>

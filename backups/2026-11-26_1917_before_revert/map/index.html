@@ -1,0 +1,3745 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>RBN 都市マップ（40×40・中心基準可変・クラウド共有）</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#0b1120" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ks map" />
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png" />
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="../assets/firebase-init.js"></script>
+  <link rel="stylesheet" href="../assets/common.css" />
+  <style>
+    :root {
+      --bg: #0b1120;
+      --surface: #131c31;
+      --surface-2: #1b263f;
+      --surface-3: #243352;
+      --border: #334155;
+      --border-strong: #475569;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-hover: #d97706;
+      --blue: #38bdf8;
+      --blue-strong: #0284c7;
+      --green: #10b981;
+      --red: #ef4444;
+      --purple: #818cf8;
+      --shadow-sm: 0 2px 8px rgba(2, 6, 23, 0.35);
+      --shadow-md: 0 10px 28px rgba(2, 6, 23, 0.55);
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 8px 12px;
+      gap: 6px;
+    }
+    body.resizing-split {
+      user-select: none;
+      cursor: col-resize;
+    }
+    body.resizing-split-v {
+      user-select: none;
+      cursor: row-resize;
+    }
+    body.view-only .edit-only {
+      pointer-events: none;
+      opacity: 0.45;
+    }
+    body.view-only .member-row input,
+    body.view-only .member-row button {
+      pointer-events: none;
+      opacity: 0.65;
+    }
+    body.view-only canvas {
+      cursor: grab;
+    }
+    body.view-only canvas:active {
+      cursor: grabbing;
+    }
+
+    .app-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface) 100%);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
+    }
+    .brand-block {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .brand-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.01em;
+    }
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      background: rgba(19, 28, 49, 0.85);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .info {
+      font-size: 11.5px;
+      background: var(--surface-2);
+      color: #e2e8f0;
+      padding: 4px 9px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-weight: 500;
+    }
+    .mode-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(245, 158, 11, 0.55);
+      background: rgba(245, 158, 11, 0.15);
+      color: #fde68a;
+    }
+    body:not(.view-only) .mode-badge {
+      border-color: rgba(16, 185, 129, 0.55);
+      background: rgba(16, 185, 129, 0.16);
+      color: #6ee7b7;
+    }
+    .cloud-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+    }
+    .cloud-badge.online {
+      border-color: rgba(56, 189, 248, 0.55);
+      background: rgba(56, 189, 248, 0.15);
+      color: #7dd3fc;
+    }
+    .status-msg {
+      font-size: 11.5px;
+      color: #fca5a5;
+      min-height: 16px;
+      padding: 0 2px;
+      flex-shrink: 0;
+    }
+    .status-msg.ok {
+      color: #6ee7b7;
+    }
+
+    select, input[type="text"], input[type="number"], input[type="password"], textarea {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    select:focus, input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+    input[type="text"] {
+      width: 136px;
+    }
+    .member-row input[type="text"] {
+      width: 100%;
+      min-width: 0;
+    }
+    .member-row input[type="number"].coord-input {
+      width: 100%;
+      min-width: 0;
+      text-align: center;
+      padding: 4px 2px;
+    }
+    .member-row input[type="number"].power-input {
+      width: 100%;
+      min-width: 0;
+      text-align: right;
+      padding: 4px 5px;
+    }
+
+    button {
+      background: var(--surface-3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      line-height: 1.25;
+      transition: background 0.15s, border-color 0.15s, transform 0.08s;
+    }
+    button:hover:not(:disabled) {
+      background: #334155;
+      border-color: var(--border-strong);
+    }
+    button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    button.primary {
+      background: var(--blue-strong);
+      border-color: var(--blue);
+      color: #fff;
+    }
+    button.primary:hover:not(:disabled) {
+      background: #0369a1;
+    }
+    button.accent-btn {
+      background: var(--accent);
+      border-color: #fbbf24;
+      color: #0f172a;
+    }
+    button.accent-btn:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+    button.success {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: rgba(16, 185, 129, 0.55);
+      color: #6ee7b7;
+    }
+    button.success:hover:not(:disabled) {
+      background: rgba(16, 185, 129, 0.32);
+    }
+    button.danger {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: rgba(248, 113, 113, 0.55);
+      color: #fca5a5;
+    }
+    button.danger:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.3);
+    }
+    button.active-mode {
+      background: #b45309;
+      border-color: #fbbf24;
+      color: #fff;
+    }
+    button.edit-toggle-btn {
+      background: rgba(245, 158, 11, 0.22);
+      border-color: #fbbf24;
+      color: #fde68a;
+    }
+    button.edit-toggle-btn:hover:not(:disabled) {
+      background: rgba(245, 158, 11, 0.34);
+    }
+    body:not(.view-only) button.edit-toggle-btn {
+      background: rgba(16, 185, 129, 0.24);
+      border-color: #34d399;
+      color: #6ee7b7;
+    }
+    body:not(.view-only) button.edit-toggle-btn:hover:not(:disabled) {
+      background: rgba(16, 185, 129, 0.36);
+    }
+    button.ui-switch-btn {
+      background: rgba(129, 140, 248, 0.18);
+      border-color: var(--purple);
+      color: #c7d2fe;
+    }
+    button.ui-switch-btn:hover:not(:disabled) {
+      background: rgba(129, 140, 248, 0.28);
+    }
+    button.settings-btn {
+      background: var(--surface-2);
+      border-color: var(--blue);
+      color: #7dd3fc;
+    }
+    button.settings-btn:hover:not(:disabled) {
+      background: rgba(56, 189, 248, 0.16);
+    }
+
+    .mobile-view-tabs {
+      display: none;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .mobile-view-tabs button {
+      flex: 1;
+      justify-content: center;
+      padding: 6px 8px;
+      font-size: 12px;
+      background: var(--surface-2);
+    }
+    .mobile-view-tabs button.active {
+      background: var(--blue-strong);
+      border-color: var(--blue);
+      color: #fff;
+    }
+
+    .main-layout {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      gap: 0;
+    }
+    .canvas-wrap {
+      flex: 1;
+      min-width: 200px;
+      min-height: 110px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    canvas {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 10px;
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    .splitter {
+      width: 10px;
+      margin: 0 4px;
+      border-radius: 5px;
+      background: var(--surface-3);
+      cursor: col-resize;
+      flex-shrink: 0;
+      position: relative;
+      transition: background 0.15s;
+      touch-action: none;
+    }
+    .splitter::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 36px;
+      border-radius: 2px;
+      background: #64748b;
+    }
+    .splitter:hover,
+    body.resizing-split .splitter,
+    body.resizing-split-v .splitter {
+      background: var(--blue-strong);
+    }
+    .splitter:hover::after,
+    body.resizing-split .splitter::after,
+    body.resizing-split-v .splitter::after {
+      background: #e0f2fe;
+    }
+
+    .roster-panel {
+      width: 470px;
+      min-width: 330px;
+      min-height: 110px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .roster-header {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .roster-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+    }
+    .roster-cols {
+      display: grid;
+      grid-template-columns: 34px minmax(85px, 1.35fr) minmax(72px, 0.95fr) minmax(105px, 1.25fr) 28px;
+      gap: 5px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+    .roster-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 5px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .roster-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .roster-list::-webkit-scrollbar-thumb {
+      background: var(--surface-3);
+      border-radius: 999px;
+    }
+    .section-divider {
+      margin: 6px 2px 3px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fbbf24;
+      background: rgba(245, 158, 11, 0.14);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 6px;
+    }
+    .member-row {
+      display: grid;
+      grid-template-columns: 34px minmax(85px, 1.35fr) minmax(72px, 0.95fr) minmax(105px, 1.25fr) 28px;
+      gap: 5px;
+      align-items: center;
+      padding: 4px;
+      border-radius: 6px;
+      background: var(--surface-2);
+      border: 1px solid rgba(51, 65, 85, 0.55);
+      font-size: 12px;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .member-row:hover {
+      border-color: rgba(148, 163, 184, 0.45);
+    }
+    .member-row.facility-row {
+      background: var(--surface-3);
+    }
+    .member-row.selected {
+      background: #1e3a5f;
+      border-color: var(--blue);
+      box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.35);
+    }
+    .member-row.placed .rank-badge {
+      color: #34d399;
+    }
+    .rank-badge {
+      text-align: center;
+      font-weight: 700;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .coord-pair {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 3px;
+      width: 100%;
+      min-width: 0;
+    }
+    .coord-pair span {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .clear-coord-btn {
+      padding: 2px 5px;
+      font-size: 11px;
+      line-height: 1.2;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .coord-popup {
+      position: fixed;
+      z-index: 40;
+      pointer-events: none;
+      display: none;
+      background: rgba(15, 23, 42, 0.97);
+      color: var(--text);
+      border: 1px solid var(--blue);
+      box-shadow: var(--shadow-md);
+      border-radius: 8px;
+      padding: 7px 11px;
+      font-size: 12px;
+      line-height: 1.45;
+      max-width: 340px;
+      white-space: nowrap;
+    }
+    .coord-popup.show {
+      display: block;
+    }
+    .coord-popup.dragging-popup {
+      border-color: #fbbf24;
+    }
+    .coord-popup.invalid-popup {
+      border-color: #f87171;
+    }
+    .coord-popup .popup-main {
+      font-weight: 700;
+      color: #fef08a;
+      font-size: 12.5px;
+    }
+    .coord-popup.invalid-popup .popup-main {
+      color: #fca5a5;
+    }
+    .coord-popup .popup-sub {
+      color: #cbd5e1;
+      font-size: 11px;
+      margin-top: 1px;
+    }
+    body.mobile-mode .coord-popup {
+      left: 50% !important;
+      top: auto !important;
+      bottom: 14px !important;
+      transform: translateX(-50%);
+      max-width: 94vw;
+      white-space: normal;
+      text-align: center;
+      padding: 9px 14px;
+      border-width: 1.5px;
+    }
+
+    body.mobile-mode {
+      padding: 6px 8px;
+      gap: 4px;
+    }
+    body.mobile-mode .app-header {
+      padding: 6px 8px;
+      gap: 5px;
+    }
+    body.mobile-mode .brand-title {
+      font-size: 13px;
+    }
+    body.mobile-mode .hide-on-mobile {
+      display: none !important;
+    }
+    body.mobile-mode .toolbar {
+      padding: 4px 6px;
+      gap: 4px;
+    }
+    body.mobile-mode .toolbar select,
+    body.mobile-mode .toolbar input[type="text"],
+    body.mobile-mode .toolbar button {
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    body.mobile-mode .toolbar input[type="text"] {
+      flex: 1;
+      min-width: 100px;
+    }
+    body.mobile-mode .mobile-view-tabs {
+      display: flex;
+    }
+    body.mobile-mode .main-layout {
+      flex-direction: column;
+      gap: 0;
+    }
+    body.mobile-mode .splitter {
+      display: block;
+      width: 100%;
+      height: 15px;
+      margin: 4px 0;
+      border-radius: 7px;
+      cursor: row-resize;
+    }
+    body.mobile-mode .splitter::after {
+      width: 44px;
+      height: 3px;
+    }
+    body.mobile-mode .canvas-wrap {
+      width: 100%;
+      min-width: 0;
+      min-height: 90px;
+      flex: none;
+      height: 48%;
+    }
+    body.mobile-mode .roster-panel {
+      width: 100% !important;
+      min-width: 0;
+      min-height: 90px;
+      flex: 1;
+    }
+    body.mobile-mode.mobile-tab-map .roster-panel,
+    body.mobile-mode.mobile-tab-map .splitter {
+      display: none;
+    }
+    body.mobile-mode.mobile-tab-map .canvas-wrap {
+      height: 100%;
+      flex: 1;
+    }
+    body.mobile-mode.mobile-tab-list .canvas-wrap,
+    body.mobile-mode.mobile-tab-list .splitter {
+      display: none;
+    }
+    body.mobile-mode.mobile-tab-list .roster-panel {
+      height: 100%;
+      flex: 1;
+    }
+    body.mobile-mode .roster-cols,
+    body.mobile-mode .member-row {
+      grid-template-columns: 30px minmax(75px, 1.35fr) minmax(64px, 0.9fr) minmax(96px, 1.25fr) 30px;
+      gap: 4px;
+      padding: 5px 4px;
+    }
+    body.mobile-mode .member-row input[type="text"],
+    body.mobile-mode .member-row input[type="number"] {
+      padding: 6px 4px;
+      font-size: 13px;
+    }
+    body.mobile-mode .clear-coord-btn {
+      padding: 5px 4px;
+      font-size: 12px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.78);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      padding: 12px;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+    .modal-box {
+      width: 680px;
+      max-width: 100%;
+      max-height: 88vh;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+    }
+    .modal-box.small-modal {
+      width: 430px;
+    }
+    .modal-box h4 {
+      margin: 0;
+      font-size: 14px;
+      color: var(--accent);
+    }
+    .settings-section {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .settings-section-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--blue);
+    }
+    .modal-hint {
+      font-size: 11.5px;
+      color: #cbd5e1;
+      line-height: 1.5;
+      background: var(--bg);
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .modal-box textarea {
+      width: 100%;
+      height: 180px;
+      resize: vertical;
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .backup-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .backup-group-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #93c5fd;
+      margin-bottom: 6px;
+    }
+    .backup-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .backup-item {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+    .backup-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .backup-time {
+      font-weight: 700;
+      color: var(--text);
+    }
+    .backup-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .backup-btns {
+      display: flex;
+      gap: 6px;
+    }
+    .pin-error {
+      font-size: 12px;
+      color: #fca5a5;
+      min-height: 16px;
+    }
+    .center-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .center-form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+    .center-form-field input {
+      width: 100%;
+      padding: 7px 10px;
+      font-size: 13px;
+    }
+    .link-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .link-row input {
+      flex: 1;
+      width: auto;
+    }
+    .open-link-btn {
+      background: var(--surface-3);
+      color: #e2e8f0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 11.5px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .open-link-btn:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+  </style>
+</head>
+<body class="view-only">
+  <header class="app-header">
+    <div class="rbn-topbar">
+      <nav class="rbn-quick-nav" aria-label="ツール切替">
+        <a class="rbn-top-link rbn-top-link--compact" href="../" title="トップメニューへ戻る">🏠 トップ</a>
+        <a id="headerBearNavLink" class="rbn-top-link rbn-top-link--compact" href="../bear/" title="RBN 熊編成ナビを開く">🐻 熊編成</a>
+        <a id="headerNoticeGenLink" class="rbn-top-link rbn-top-link--compact" href="../notice/" title="RBN 同盟通知ジェネレーターを開く">📢 通知作成</a>
+      </nav>
+      <div class="rbn-topbar-controls">
+        <div class="rbn-view-toggle" role="group" aria-label="表示レイアウトの切り替え">
+          <button id="uiModeMobileBtn" class="rbn-view-toggle-btn" type="button">📱 スマホ</button>
+          <button id="uiModePcBtn" class="rbn-view-toggle-btn" type="button">💻 PC</button>
+        </div>
+        <button id="openSettingsModalBtn" class="rbn-settings-pill" type="button">⚙️ 設定</button>
+      </div>
+    </div>
+
+    <div class="brand-block">
+      <h3 class="brand-title">🗺️ RBN 都市マップ（40×40）</h3>
+      <div id="centerBaseBadge" class="info">中心基準 X:386, Y:792</div>
+      <div id="modeBadge" class="mode-badge">🔒 閲覧モード</div>
+      <div id="cloudBadge" class="cloud-badge hide-on-mobile">☁️ ローカル保存</div>
+    </div>
+
+    <div class="header-actions">
+      <button id="toggleEditModeBtn" class="edit-toggle-btn" type="button">編集モードへ切替</button>
+      <div id="coordInfo" class="info hide-on-mobile">選択座標：なし</div>
+      <div id="zoomInfo" class="info hide-on-mobile">倍率：100%</div>
+      <button id="resetBtn" type="button">表示リセット</button>
+      <button id="exportPngBtn" class="success" type="button">PNG保存</button>
+    </div>
+  </header>
+
+  <div class="toolbar edit-only">
+    <label class="info" style="padding: 3px 8px;">
+      種別：
+      <select id="facilityTypeSelect">
+        <option value="city">都市（2×2）</option>
+        <option value="hq">同盟本部（3×3）</option>
+        <option value="trap">熊罠（3×3）</option>
+        <option value="flag">同盟旗（1×1）</option>
+        <option value="gathering">大型採集場（3×3）</option>
+        <option value="honor">名誉建築（2×2）</option>
+      </select>
+    </label>
+    <input id="itemNameInput" type="text" placeholder="名称 / プレイヤー名" />
+    <button id="placeBtn" class="primary" type="button" disabled>選択位置に配置</button>
+    <button id="renameBtn" type="button" disabled>名前変更</button>
+    <button id="moveModeBtn" type="button" disabled>移動先選択</button>
+    <button id="deleteBtn" class="danger" type="button" disabled>配置解除</button>
+  </div>
+  <div id="statusMsg" class="status-msg">閲覧モード中です。編集するには上部の「編集モードへ切替」を押してください。</div>
+
+  <div id="mobileViewTabs" class="mobile-view-tabs">
+    <button type="button" data-tab="split" class="active">上下分割</button>
+    <button type="button" data-tab="map">マップ拡大</button>
+    <button type="button" data-tab="list">リスト拡大</button>
+  </div>
+
+  <div id="mainLayout" class="main-layout">
+    <div id="canvasWrap" class="canvas-wrap">
+      <canvas id="mapCanvas"></canvas>
+    </div>
+
+    <div id="splitter" class="splitter" title="ドラッグしてマップとリストの表示幅・高さを調整"></div>
+
+    <aside id="rosterPanel" class="roster-panel">
+      <div class="roster-header">
+        <div>
+          <span>メンバー（100位）＆施設</span>
+          <span id="placedCountInfo" style="color: #34d399; font-size: 11px; margin-left: 4px;">配置済：0/100</span>
+        </div>
+        <div class="roster-actions edit-only">
+          <button id="openImportBtn" class="primary" type="button">一括貼付</button>
+          <button id="copyExcelBtn" type="button">Excelコピー</button>
+          <button id="downloadCsvBtn" type="button">CSV保存</button>
+          <button id="resetAllBtn" type="button" title="保存データを初期化">初期化</button>
+        </div>
+      </div>
+      <div class="roster-cols">
+        <div style="text-align:center;">順位</div>
+        <div>名前</div>
+        <div style="text-align:right;">総力</div>
+        <div style="text-align:center;">基準(X, Y)</div>
+        <div style="text-align:center;">解除</div>
+      </div>
+      <div id="rosterList" class="roster-list"></div>
+    </aside>
+  </div>
+
+  <!-- 座標ポップアップ（PCホバー停止時 / スマホタップ・ドラッグ移動時） -->
+  <div id="coordPopup" class="coord-popup" role="tooltip">
+    <div id="popupMain" class="popup-main"></div>
+    <div id="popupSub" class="popup-sub"></div>
+  </div>
+
+  <!-- 統合設定モーダル（リンク設定・Firebase・AI Studio API・マップ基準/バックアップ） -->
+  <div id="settingsModal" class="modal-backdrop">
+    <div class="modal-box">
+      <h4>⚙️ 共通設定・リンク設定・マップ管理</h4>
+
+      <div class="settings-section">
+        <div class="settings-section-title">🔗 外部リンク設定（3アプリ共通）</div>
+        <label class="center-form-field">
+          <span>🗺️ 都市マップ URL</span>
+          <div class="link-row">
+            <input id="settingCityMapUrl" type="text" placeholder="../map/" />
+            <a id="previewCityMapLink" class="open-link-btn" href="../map/" target="_blank" rel="noopener noreferrer">開く ↗</a>
+          </div>
+        </label>
+        <label class="center-form-field">
+          <span>🐻 熊編成ナビ URL</span>
+          <div class="link-row">
+            <input id="settingBearNavUrl" type="text" placeholder="../bear/" />
+            <a id="previewBearNavLink" class="open-link-btn" href="../bear/" target="_blank" rel="noopener noreferrer">開く ↗</a>
+          </div>
+        </label>
+        <label class="center-form-field">
+          <span>📣 同盟通知ジェネレーター URL</span>
+          <div class="link-row">
+            <input id="settingNoticeGenUrl" type="text" placeholder="../notice/" />
+            <a id="previewNoticeGenLink" class="open-link-btn" href="../notice/" target="_blank" rel="noopener noreferrer">開く ↗</a>
+          </div>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">☁️ Firebase / AI Studio API 共通設定</div>
+        <label class="center-form-field">
+          <span>Firebase Realtime Database URL</span>
+          <input id="settingFirebaseDbUrl" type="text" placeholder="https://...firebaseio.com" />
+        </label>
+        <label class="center-form-field">
+          <span>AI Studio API キー（共通保持）</span>
+          <input id="settingAiStudioApiKey" type="password" placeholder="AIzaSy..." />
+        </label>
+        <div class="modal-hint" style="margin:0;">
+          ※ 都市マップのクラウド同期は現行のFirebase設定・パス（<code>alliances/main_map_40x40</code>）を維持します。共通設定は <code>localStorage</code>（<code>rbn_suite_shared_settings_v1</code>）で3アプリ共通保存されます。
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">📐 都市マップ個別設定・バックアップ</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between;">
+          <span style="font-size:12px; color:#cbd5e1;">現在の中心基準：<strong>X:<span id="modalCenterXLabel">386</span>, Y:<span id="modalCenterYLabel">792</span></strong></span>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="openCenterModalBtn" class="edit-only" type="button">中心基準座標を変更</button>
+            <button id="openBackupModalBtn" type="button">バックアップ管理（5件/3日）</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">📋 共通設定JSON（一括コピー・反映）</div>
+        <textarea id="sharedConfigJsonArea" style="height: 110px;"></textarea>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button id="exportSharedJsonBtn" type="button">共通JSONをコピー</button>
+          <button id="importSharedJsonBtn" type="button">貼り付けJSONを反映</button>
+        </div>
+      </div>
+
+      <div id="settingsModalMsg" class="pin-error" style="color:#6ee7b7;"></div>
+      <div class="modal-footer">
+        <button id="closeSettingsModalBtn" type="button">閉じる</button>
+        <button id="saveSettingsModalBtn" class="primary" type="button">設定を保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 中心基準座標 設定モーダル -->
+  <div id="centerModal" class="modal-backdrop">
+    <div class="modal-box small-modal">
+      <h4>中心基準座標の設定（他同盟・別マップ対応）</h4>
+      <div class="modal-hint">
+        マップ中央の基準マスに割り当てるゲーム内座標（<code>X</code>, <code>Y</code>）を設定します。<br />
+        初期値：<strong>X = 386, Y = 792</strong>
+      </div>
+      <div class="center-form-grid">
+        <label class="center-form-field">
+          <span>中心基準 X座標</span>
+          <input id="centerXInput" type="number" step="1" />
+        </label>
+        <label class="center-form-field">
+          <span>中心基準 Y座標</span>
+          <input id="centerYInput" type="number" step="1" />
+        </label>
+      </div>
+      <div id="centerModalError" class="pin-error"></div>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button id="resetCenterDefaultBtn" type="button">初期値（386, 792）に戻す</button>
+        <div style="display:flex; gap:8px;">
+          <button id="closeCenterModalBtn" type="button">キャンセル</button>
+          <button id="applyCenterBtn" class="primary" type="button">反映して保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 編集モード切替用 パスコード入力モーダル -->
+  <div id="pinModal" class="modal-backdrop">
+    <div class="modal-box small-modal">
+      <h4>幹部編集モード パスコード認証</h4>
+      <div class="modal-hint">
+        誤編集防止とクラウド保存のため、幹部用パスコードを入力して編集モードへ切り替えます。<br />
+        解除と同時にバックアップ（直近5件／日別初回直近3日分）が作成されます。
+      </div>
+      <input id="pinInput" type="password" placeholder="パスコードを入力" style="width:100%; padding:7px 10px; font-size:13px;" />
+      <div id="pinError" class="pin-error"></div>
+      <div class="modal-footer">
+        <button id="cancelPinBtn" type="button">キャンセル</button>
+        <button id="submitPinBtn" class="primary" type="button">認証して編集へ切替</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 一括貼り付けモーダル -->
+  <div id="importModal" class="modal-backdrop">
+    <div class="modal-box">
+      <h4>一括上書き（1〜100位メンバー ＋ 102行目〜施設）</h4>
+      <div class="modal-hint">
+        1行につき <strong>名前, 総力, X座標, Y座標, 施設</strong> の順で貼り付けます（Excelタブ区切り・CSV・空白区切り対応）。<br />
+        ※ 5列目の施設種別：<code>都市</code>（2×2）／<code>同盟本部</code>（3×3）／<code>熊罠</code>（3×3）／<code>同盟旗</code>（1×1）／<code>大型採集場</code>（3×3）／<code>名誉建築</code>（2×2）<br />
+        ※ 1〜100件目はメンバーリストへ、<strong>101件目以降（Excel/CSVの102行目〜）は施設</strong>として読み込みます。座標空欄は未配置になります。
+      </div>
+      <textarea id="bulkInputTextarea" placeholder="1〜100位メンバーを貼り付け、その下（102行目〜）に同盟本部・熊罠・大型採集場・名誉建築・同盟旗を貼り付けてください"></textarea>
+      <div class="modal-footer">
+        <button id="closeImportBtn" type="button">キャンセル</button>
+        <button id="applyImportBtn" class="primary" type="button">全件上書き反映</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- バックアップ管理モーダル（直近5件 / 日別初回直近3日分） -->
+  <div id="backupModal" class="modal-backdrop">
+    <div class="modal-box">
+      <h4>自動バックアップ管理（編集切替 直近5件 ／ 日別初回 直近3日分）</h4>
+      <div class="modal-hint">
+        閲覧モードから編集モードへ切り替えるたびに<strong>編集切替バックアップ（最大5件）</strong>を作成します。<br />
+        また、その日最初に編集モードへ解除したときは<strong>日別初回バックアップ（最大3日分）</strong>も保存します。上限を超えた分は古い順に自動削除されます。
+      </div>
+      <div class="backup-sections">
+        <div>
+          <div class="backup-group-title">1. 編集モード切替バックアップ（直近5件まで保持・古い順削除）</div>
+          <div id="editBackupList" class="backup-list"></div>
+        </div>
+        <div>
+          <div class="backup-group-title">2. 日別初回バックアップ（直近3日分まで保持・古い日付順削除）</div>
+          <div id="dailyBackupList" class="backup-list"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="closeBackupModalBtn" type="button">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== 共通設定・Firebase クラウド共有設定 ====================
+    const SHARED_SETTINGS_KEY = RBNSuite.SHARED_SETTINGS_KEY;
+    const DEFAULT_SHARED_SETTINGS = RBNSuite.getDefaultSharedSettings();
+    const firebaseConfig = RBNSuite.getFirebaseConfig();
+
+    function loadSharedSettings() {
+      return RBNSuite.loadSharedSettings();
+    }
+
+    let sharedSettings = loadSharedSettings();
+    if (sharedSettings.firebase.databaseUrl) {
+      firebaseConfig.databaseURL = sharedSettings.firebase.databaseUrl;
+    }
+
+    function saveSharedSettingsToStorage(nextSettings) {
+      sharedSettings = RBNSuite.saveSharedSettings(nextSettings);
+      firebaseConfig.databaseURL = sharedSettings.firebase.databaseUrl;
+    }
+
+    const EDIT_PIN = "rbn2011";
+    const CLOUD_ROOM_PATH = RBNSuite.DB_PATHS.cityMap;
+
+    let cloudRoomRef = null;
+    let isCloudEnabled = false;
+    let lastCloudWriteAt = 0;
+
+    function initFirebaseCloud() {
+      const dbUrl = RBNSuite.normalizeDatabaseUrl(sharedSettings.firebase?.databaseUrl || firebaseConfig.databaseURL);
+      firebaseConfig.databaseURL = dbUrl;
+
+      const result = RBNSuite.initRealtimeDatabase({
+        databaseUrl: dbUrl,
+        customAppName: "mapCustomApp"
+      });
+
+      if (!result.ok) {
+        isCloudEnabled = false;
+        cloudBadge.textContent = result.reason === "init-error" ? "☁️ クラウド接続エラー" : "☁️ ローカル保存";
+        cloudBadge.classList.remove("online");
+        return;
+      }
+
+      try {
+        if (cloudRoomRef) {
+          cloudRoomRef.off();
+        }
+        cloudRoomRef = result.db.ref(CLOUD_ROOM_PATH);
+        isCloudEnabled = true;
+        cloudBadge.textContent = "☁️ クラウド同期ON";
+        cloudBadge.classList.add("online");
+
+        cloudRoomRef.on(
+          "value",
+          (snapshot) => {
+            const data = snapshot.val();
+            if (!data || !Array.isArray(data.members)) return;
+
+            if (Date.now() - lastCloudWriteAt < 2500) return;
+            if (draggingTarget || document.activeElement?.tagName === "INPUT") return;
+
+            applyRemoteCloudData(data);
+          },
+          (err) => {
+            console.warn("Firebase read warning:", err);
+            cloudBadge.textContent = "☁️ クラウド読込エラー";
+            cloudBadge.classList.remove("online");
+          }
+        );
+      } catch (err) {
+        console.warn("Firebase ref error:", err);
+        isCloudEnabled = false;
+        cloudBadge.textContent = "☁️ クラウド接続エラー";
+        cloudBadge.classList.remove("online");
+      }
+    }
+
+    function applyRemoteCloudData(data) {
+      if (data.centerGameBase && Number.isInteger(data.centerGameBase.x) && Number.isInteger(data.centerGameBase.y)) {
+        CENTER_GAME_BASE = { x: data.centerGameBase.x, y: data.centerGameBase.y };
+        updateCenterBaseBadge();
+      }
+
+      members = data.members.slice(0, ROSTER_LIMIT).map((m, idx) => ({
+        id: Number.isInteger(m.id) ? m.id : idx + 1,
+        name: typeof m.name === "string" ? m.name : "",
+        power: Number.isFinite(Number(m.power)) ? Number(m.power) : 0,
+        type: FACILITY_TYPES[m.type] ? m.type : "city",
+        x: Number.isInteger(m.x) ? m.x : null,
+        y: Number.isInteger(m.y) ? m.y : null
+      }));
+      while (members.length < ROSTER_LIMIT) {
+        const idx = members.length;
+        members.push({ id: idx + 1, name: "", power: 0, type: "city", x: null, y: null });
+      }
+
+      const idSet = new Set(members.map((m) => m.id));
+      if (Array.isArray(data.orderedMemberIds)) {
+        const validOrder = data.orderedMemberIds.filter((id) => idSet.has(id));
+        for (const m of members) {
+          if (!validOrder.includes(m.id)) validOrder.push(m.id);
+        }
+        orderedMemberIds = validOrder;
+      } else {
+        resortByPower();
+      }
+
+      facilities = Array.isArray(data.facilities)
+        ? data.facilities.map((f, idx) => ({
+            id: Number.isInteger(f.id) ? f.id : idx + 1,
+            name: typeof f.name === "string" ? f.name : `施設${idx + 1}`,
+            type: FACILITY_TYPES[f.type]?.isExtraFacility ? f.type : "trap",
+            x: Number.isInteger(f.x) ? f.x : null,
+            y: Number.isInteger(f.y) ? f.y : null
+          }))
+        : [];
+      nextFacilityId = Number.isInteger(data.nextFacilityId)
+        ? data.nextFacilityId
+        : facilities.reduce((max, f) => Math.max(max, f.id + 1), 1);
+
+      saveToLocalStorageOnly();
+      renderRoster();
+      syncToolbar();
+      render();
+    }
+
+    function saveToCloud() {
+      if (!isCloudEnabled || !cloudRoomRef || !isEditable) return;
+      lastCloudWriteAt = Date.now();
+      const payload = {
+        editPin: EDIT_PIN,
+        updatedAt: Date.now(),
+        centerGameBase: { ...CENTER_GAME_BASE },
+        members,
+        orderedMemberIds,
+        facilities,
+        nextFacilityId
+      };
+      cloudRoomRef.set(payload).catch((err) => {
+        statusMsg.classList.remove("ok");
+        statusMsg.textContent = "クラウド保存エラー（パスコードやルールを確認）：" + err.message;
+      });
+    }
+
+    // ==================== 定数・施設定義・中心基準設定 ====================
+    const STORAGE_KEY = "kingshot_40x40_roster_facilities_v4";
+    const UI_MODE_STORAGE_KEY = "kingshot_ui_mode_pref_v1";
+    const EDIT_BACKUPS_KEY = "kingshot_edit_backups_max5_v1";
+    const DAILY_BACKUPS_KEY = "kingshot_daily_backups_max3_v1";
+
+    const MAX_EDIT_BACKUPS = 5;
+    const MAX_DAILY_BACKUPS = 3;
+
+    const DEFAULT_CENTER_GAME_BASE = { x: 386, y: 792 };
+    const CENTER_GRID_BASE = { x: 20, y: 20 };
+    let CENTER_GAME_BASE = { ...DEFAULT_CENTER_GAME_BASE };
+
+    const FACILITY_TYPES = {
+      city: {
+        label: "都市",
+        size: 2,
+        isExtraFacility: false,
+        placedBaseFill: "rgba(16, 185, 129, 0.45)",
+        placedSubFill:  "rgba(16, 185, 129, 0.28)",
+        borderStroke:   "#6ee7b7"
+      },
+      hq: {
+        label: "同盟本部",
+        size: 3,
+        isExtraFacility: true,
+        placedBaseFill: "rgba(234, 88, 12, 0.56)",
+        placedSubFill:  "rgba(234, 88, 12, 0.34)",
+        borderStroke:   "#fdba74"
+      },
+      trap: {
+        label: "熊罠",
+        size: 3,
+        isExtraFacility: true,
+        placedBaseFill: "rgba(225, 29, 72, 0.54)",
+        placedSubFill:  "rgba(225, 29, 72, 0.32)",
+        borderStroke:   "#fda4af"
+      },
+      flag: {
+        label: "同盟旗",
+        size: 1,
+        isExtraFacility: true,
+        placedBaseFill: "rgba(139, 92, 246, 0.58)",
+        placedSubFill:  "rgba(139, 92, 246, 0.38)",
+        borderStroke:   "#d8b4fe"
+      },
+      gathering: {
+        label: "大型採集場",
+        size: 3,
+        isExtraFacility: true,
+        placedBaseFill: "rgba(6, 182, 212, 0.50)",
+        placedSubFill:  "rgba(6, 182, 212, 0.30)",
+        borderStroke:   "#67e8f9"
+      },
+      honor: {
+        label: "名誉建築",
+        size: 2,
+        isExtraFacility: true,
+        placedBaseFill: "rgba(217, 119, 6, 0.54)",
+        placedSubFill:  "rgba(217, 119, 6, 0.32)",
+        borderStroke:   "#fde047"
+      }
+    };
+
+    function parseFacilityType(raw, forceExtra = false) {
+      const val = String(raw ?? "").trim().toLowerCase();
+      if (val.includes("本部") || val === "hq") return "hq";
+      if (val.includes("熊") || val.includes("罠") || val === "trap") return "trap";
+      if (val.includes("旗") || val === "flag") return "flag";
+      if (val.includes("採集") || val.includes("大型") || val === "gathering" || val === "gather") return "gathering";
+      if (val.includes("名誉") || val.includes("建築") || val === "honor" || val === "building") return "honor";
+      if (val === "都市" || val === "city") return "city";
+      return forceExtra ? "trap" : "city";
+    }
+
+    const ROSTER_LIMIT = 100;
+    const cols = 40;
+    const rows = 40;
+
+    function gridToGame(gx, gy) {
+      return {
+        x: CENTER_GAME_BASE.x - (gy - CENTER_GRID_BASE.y),
+        y: CENTER_GAME_BASE.y - (gx - CENTER_GRID_BASE.x)
+      };
+    }
+
+    function gameToGrid(gameX, gameY) {
+      return {
+        x: CENTER_GRID_BASE.x - (gameY - CENTER_GAME_BASE.y),
+        y: CENTER_GRID_BASE.y - (gameX - CENTER_GAME_BASE.x)
+      };
+    }
+
+    function getLocalDateKey(dateObj = new Date()) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+      const d = String(dateObj.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function getLocalTimestampLabel(dateObj = new Date()) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+      const d = String(dateObj.getDate()).padStart(2, "0");
+      const hh = String(dateObj.getHours()).padStart(2, "0");
+      const mm = String(dateObj.getMinutes()).padStart(2, "0");
+      const ss = String(dateObj.getSeconds()).padStart(2, "0");
+      return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+    }
+
+    const canvas = document.getElementById("mapCanvas");
+    const ctx = canvas.getContext("2d");
+    const mainLayout = document.getElementById("mainLayout");
+    const canvasWrap = document.getElementById("canvasWrap");
+    const splitter = document.getElementById("splitter");
+    const rosterPanel = document.getElementById("rosterPanel");
+    const centerBaseBadge = document.getElementById("centerBaseBadge");
+
+    const openSettingsModalBtn = document.getElementById("openSettingsModalBtn");
+    const settingsModal = document.getElementById("settingsModal");
+    const closeSettingsModalBtn = document.getElementById("closeSettingsModalBtn");
+    const saveSettingsModalBtn = document.getElementById("saveSettingsModalBtn");
+    const settingsModalMsg = document.getElementById("settingsModalMsg");
+    const settingCityMapUrl = document.getElementById("settingCityMapUrl");
+    const settingBearNavUrl = document.getElementById("settingBearNavUrl");
+    const settingNoticeGenUrl = document.getElementById("settingNoticeGenUrl");
+    const previewCityMapLink = document.getElementById("previewCityMapLink");
+    const previewBearNavLink = document.getElementById("previewBearNavLink");
+    const previewNoticeGenLink = document.getElementById("previewNoticeGenLink");
+    const settingFirebaseDbUrl = document.getElementById("settingFirebaseDbUrl");
+    const settingAiStudioApiKey = document.getElementById("settingAiStudioApiKey");
+    const modalCenterXLabel = document.getElementById("modalCenterXLabel");
+    const modalCenterYLabel = document.getElementById("modalCenterYLabel");
+    const sharedConfigJsonArea = document.getElementById("sharedConfigJsonArea");
+    const exportSharedJsonBtn = document.getElementById("exportSharedJsonBtn");
+    const importSharedJsonBtn = document.getElementById("importSharedJsonBtn");
+
+    const openCenterModalBtn = document.getElementById("openCenterModalBtn");
+    const centerModal = document.getElementById("centerModal");
+    const centerXInput = document.getElementById("centerXInput");
+    const centerYInput = document.getElementById("centerYInput");
+    const centerModalError = document.getElementById("centerModalError");
+    const resetCenterDefaultBtn = document.getElementById("resetCenterDefaultBtn");
+    const closeCenterModalBtn = document.getElementById("closeCenterModalBtn");
+    const applyCenterBtn = document.getElementById("applyCenterBtn");
+
+    const coordPopup = document.getElementById("coordPopup");
+    const popupMain = document.getElementById("popupMain");
+    const popupSub = document.getElementById("popupSub");
+
+    const coordInfo = document.getElementById("coordInfo");
+    const zoomInfo = document.getElementById("zoomInfo");
+    const cloudBadge = document.getElementById("cloudBadge");
+    const statusMsg = document.getElementById("statusMsg");
+    const placedCountInfo = document.getElementById("placedCountInfo");
+    const rosterListEl = document.getElementById("rosterList");
+
+    const modeBadge = document.getElementById("modeBadge");
+    const toggleEditModeBtn = document.getElementById("toggleEditModeBtn");
+    const openBackupModalBtn = document.getElementById("openBackupModalBtn");
+    const backupModal = document.getElementById("backupModal");
+    const closeBackupModalBtn = document.getElementById("closeBackupModalBtn");
+    const editBackupListEl = document.getElementById("editBackupList");
+    const dailyBackupListEl = document.getElementById("dailyBackupList");
+
+    const pinModal = document.getElementById("pinModal");
+    const pinInput = document.getElementById("pinInput");
+    const pinError = document.getElementById("pinError");
+    const cancelPinBtn = document.getElementById("cancelPinBtn");
+    const submitPinBtn = document.getElementById("submitPinBtn");
+
+    const resetBtn = document.getElementById("resetBtn");
+    const exportPngBtn = document.getElementById("exportPngBtn");
+    const uiModeMobileBtn = document.getElementById("uiModeMobileBtn");
+    const uiModePcBtn = document.getElementById("uiModePcBtn");
+    const mobileViewTabs = document.getElementById("mobileViewTabs");
+
+    const facilityTypeSelect = document.getElementById("facilityTypeSelect");
+    const itemNameInput = document.getElementById("itemNameInput");
+    const placeBtn = document.getElementById("placeBtn");
+    const renameBtn = document.getElementById("renameBtn");
+    const moveModeBtn = document.getElementById("moveModeBtn");
+    const deleteBtn = document.getElementById("deleteBtn");
+
+    const openImportBtn = document.getElementById("openImportBtn");
+    const copyExcelBtn = document.getElementById("copyExcelBtn");
+    const downloadCsvBtn = document.getElementById("downloadCsvBtn");
+    const resetAllBtn = document.getElementById("resetAllBtn");
+    const importModal = document.getElementById("importModal");
+    const bulkInputTextarea = document.getElementById("bulkInputTextarea");
+    const closeImportBtn = document.getElementById("closeImportBtn");
+    const applyImportBtn = document.getElementById("applyImportBtn");
+
+    function syncSettingsModalInputs() {
+      settingCityMapUrl.value = RBNSuite.normalizeToolLink(sharedSettings.links.cityMapUrl, "cityMapUrl");
+      settingBearNavUrl.value = RBNSuite.normalizeToolLink(sharedSettings.links.bearNavUrl, "bearNavUrl");
+      settingNoticeGenUrl.value = RBNSuite.normalizeToolLink(sharedSettings.links.noticeGenUrl, "noticeGenUrl");
+      previewCityMapLink.href = settingCityMapUrl.value || "#";
+      previewBearNavLink.href = settingBearNavUrl.value || "#";
+      previewNoticeGenLink.href = settingNoticeGenUrl.value || "#";
+      const headerBearEl = document.getElementById("headerBearNavLink");
+      const headerNoticeEl = document.getElementById("headerNoticeGenLink");
+      if (headerBearEl) headerBearEl.href = settingBearNavUrl.value || "../bear/";
+      if (headerNoticeEl) headerNoticeEl.href = settingNoticeGenUrl.value || "../notice/";
+
+      settingFirebaseDbUrl.value = sharedSettings.firebase.databaseUrl || firebaseConfig.databaseURL;
+      settingAiStudioApiKey.value = sharedSettings.ai.studioApiKey || "";
+      modalCenterXLabel.textContent = String(CENTER_GAME_BASE.x);
+      modalCenterYLabel.textContent = String(CENTER_GAME_BASE.y);
+      sharedConfigJsonArea.value = JSON.stringify({
+        links: {
+          cityMapUrl: settingCityMapUrl.value,
+          bearNavUrl: settingBearNavUrl.value,
+          noticeGenUrl: settingNoticeGenUrl.value
+        },
+        firebase: {
+          databaseUrl: settingFirebaseDbUrl.value
+        },
+        ai: {
+          studioApiKey: settingAiStudioApiKey.value
+        }
+      }, null, 2);
+    }
+
+    openSettingsModalBtn.addEventListener("click", () => {
+      settingsModalMsg.textContent = "";
+      syncSettingsModalInputs();
+      settingsModal.classList.add("open");
+    });
+
+    closeSettingsModalBtn.addEventListener("click", () => {
+      settingsModal.classList.remove("open");
+    });
+
+    settingsModal.addEventListener("click", (e) => {
+      if (e.target === settingsModal) {
+        settingsModal.classList.remove("open");
+      }
+    });
+
+    [settingCityMapUrl, settingBearNavUrl, settingNoticeGenUrl].forEach((inp) => {
+      inp.addEventListener("input", () => {
+        previewCityMapLink.href = settingCityMapUrl.value.trim() || "#";
+        previewBearNavLink.href = settingBearNavUrl.value.trim() || "#";
+        previewNoticeGenLink.href = settingNoticeGenUrl.value.trim() || "#";
+      });
+    });
+
+    saveSettingsModalBtn.addEventListener("click", () => {
+      const prevDbUrl = sharedSettings.firebase.databaseUrl;
+      saveSharedSettingsToStorage({
+        links: {
+          cityMapUrl: settingCityMapUrl.value,
+          bearNavUrl: settingBearNavUrl.value,
+          noticeGenUrl: settingNoticeGenUrl.value
+        },
+        firebase: {
+          databaseUrl: settingFirebaseDbUrl.value
+        },
+        ai: {
+          studioApiKey: settingAiStudioApiKey.value
+        }
+      });
+      syncSettingsModalInputs();
+      if (prevDbUrl !== sharedSettings.firebase.databaseUrl) {
+        initFirebaseCloud();
+      }
+      settingsModalMsg.textContent = "✅ 共通設定を保存しました。";
+      statusMsg.classList.add("ok");
+      statusMsg.textContent = "共通設定（リンク・Firebase・AI API）を保存しました。";
+    });
+
+    exportSharedJsonBtn.addEventListener("click", async () => {
+      const text = JSON.stringify({
+        links: {
+          cityMapUrl: settingCityMapUrl.value.trim(),
+          bearNavUrl: settingBearNavUrl.value.trim(),
+          noticeGenUrl: settingNoticeGenUrl.value.trim()
+        },
+        firebase: {
+          databaseUrl: settingFirebaseDbUrl.value.trim()
+        },
+        ai: {
+          studioApiKey: settingAiStudioApiKey.value.trim()
+        }
+      }, null, 2);
+      sharedConfigJsonArea.value = text;
+      const copied = await RBNSuite.safeCopyText(text);
+      settingsModalMsg.textContent = copied
+        ? "✅ 共通設定JSONをクリップボードにコピーしました。"
+        : "テキスト欄のJSONをコピーしてください。";
+    });
+
+    importSharedJsonBtn.addEventListener("click", () => {
+      try {
+        const parsed = JSON.parse(sharedConfigJsonArea.value);
+        saveSharedSettingsToStorage({
+          links: {
+            cityMapUrl: parsed.links?.cityMapUrl ?? settingCityMapUrl.value,
+            bearNavUrl: parsed.links?.bearNavUrl ?? settingBearNavUrl.value,
+            noticeGenUrl: parsed.links?.noticeGenUrl ?? settingNoticeGenUrl.value
+          },
+          firebase: {
+            databaseUrl: parsed.firebase?.databaseUrl ?? settingFirebaseDbUrl.value
+          },
+          ai: {
+            studioApiKey: parsed.ai?.studioApiKey ?? settingAiStudioApiKey.value
+          }
+        });
+        syncSettingsModalInputs();
+        initFirebaseCloud();
+        settingsModalMsg.textContent = "✅ 共通設定JSONを反映・保存しました。";
+      } catch (err) {
+        settingsModalMsg.textContent = "JSONの形式が正しくありません：" + err.message;
+      }
+    });
+
+    let isEditable = false;
+
+    let baseTileW = 24;
+    let baseTileH = 12;
+    let baseOriginX = 0;
+    let baseOriginY = 0;
+
+    let zoom = 1.0;
+    const minZoom = 0.6;
+    const maxZoom = 4.0;
+    let panX = 0;
+    let panY = 0;
+
+    let isResizingSplitter = false;
+    let isResizingMobileSplitter = false;
+
+    let isPanning = false;
+    let hasMovedDuringPan = false;
+    let panDragStartX = 0;
+    let panDragStartY = 0;
+    let panStartX = 0;
+    let panStartY = 0;
+
+    let isPinching = false;
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1.0;
+
+    let draggingTarget = null;
+    let dragPreviewGridBase = null;
+    let dragPreviewValid = true;
+    let dragPreviewReason = "";
+    let dragOffsetGridX = 0;
+    let dragOffsetGridY = 0;
+
+    let currentUiMode = "pc";
+    let mobileTab = "split";
+
+    const PC_HOVER_DELAY_MS = 450;
+    const MOBILE_POPUP_DURATION_MS = 2800;
+    let hoverTimerId = null;
+    let mobilePopupTimerId = null;
+    let lastMouseClientPos = { x: 0, y: 0 };
+
+    function hideCoordPopup() {
+      if (hoverTimerId !== null) {
+        clearTimeout(hoverTimerId);
+        hoverTimerId = null;
+      }
+      coordPopup.classList.remove("show", "dragging-popup", "invalid-popup");
+    }
+
+    function showDragPreviewPopup(dragEnt, previewBase, isValid, reason, clientX = null, clientY = null) {
+      if (mobilePopupTimerId !== null) {
+        clearTimeout(mobilePopupTimerId);
+        mobilePopupTimerId = null;
+      }
+      const def = FACILITY_TYPES[dragEnt.type] || FACILITY_TYPES.city;
+      const gPreview = gridToGame(previewBase.x, previewBase.y);
+      coordPopup.classList.remove("invalid-popup");
+      coordPopup.classList.add("show", "dragging-popup");
+
+      if (isValid) {
+        popupMain.textContent = `移動予定：(${gPreview.x}, ${gPreview.y})`;
+        popupSub.textContent = `${def.label}「${dragEnt.name}」／ 離すと配置されます`;
+      } else {
+        coordPopup.classList.add("invalid-popup");
+        popupMain.textContent = `配置不可：(${gPreview.x}, ${gPreview.y})`;
+        popupSub.textContent = reason || "他の施設または範囲外と重なっています";
+      }
+
+      if (currentUiMode !== "mobile" && clientX !== null && clientY !== null) {
+        positionPcPopupNearCursor(clientX, clientY);
+      }
+    }
+
+    function buildPopupContentForGrid(gx, gy) {
+      if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) {
+        return {
+          main: "マップ範囲外",
+          sub: "40×40 グリッド外"
+        };
+      }
+      const gCoord = gridToGame(gx, gy);
+      const hitEnt = findEntityAtTile(gx, gy);
+      if (hitEnt) {
+        const def = FACILITY_TYPES[hitEnt.type] || FACILITY_TYPES.city;
+        const gBase = gridToGame(hitEnt.x, hitEnt.y);
+        return {
+          main: `${def.label}「${hitEnt.name}」 (${gBase.x}, ${gBase.y})`,
+          sub: `選択マス：(${gCoord.x}, ${gCoord.y}) ／ サイズ ${def.size}×${def.size}`
+        };
+      }
+      return {
+        main: `座標 (${gCoord.x}, ${gCoord.y})`,
+        sub: "空きマス"
+      };
+    }
+
+    function positionPcPopupNearCursor(clientX, clientY) {
+      const offset = 16;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      coordPopup.style.left = `${Math.min(vw - 260, Math.max(8, clientX + offset))}px`;
+      coordPopup.style.top = `${Math.min(vh - 76, Math.max(8, clientY + offset))}px`;
+    }
+
+    function schedulePcHoverPopup(clientX, clientY) {
+      if (currentUiMode === "mobile") return;
+      lastMouseClientPos = { x: clientX, y: clientY };
+      if (hoverTimerId !== null) {
+        clearTimeout(hoverTimerId);
+      }
+      if (!draggingTarget) {
+        coordPopup.classList.remove("show", "dragging-popup", "invalid-popup");
+      }
+
+      hoverTimerId = setTimeout(() => {
+        hoverTimerId = null;
+        if (currentUiMode === "mobile" || isPanning || draggingTarget || isResizingSplitter) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = lastMouseClientPos.x - rect.left;
+        const my = lastMouseClientPos.y - rect.top;
+        if (mx < 0 || mx > rect.width || my < 0 || my > rect.height) return;
+
+        const { x, y } = toGrid(mx, my);
+        const content = buildPopupContentForGrid(x, y);
+        coordPopup.classList.remove("dragging-popup", "invalid-popup");
+        popupMain.textContent = content.main;
+        popupSub.textContent = content.sub;
+        positionPcPopupNearCursor(lastMouseClientPos.x, lastMouseClientPos.y);
+        coordPopup.classList.add("show");
+      }, PC_HOVER_DELAY_MS);
+    }
+
+    function showTapPopup(gx, gy) {
+      if (mobilePopupTimerId !== null) {
+        clearTimeout(mobilePopupTimerId);
+        mobilePopupTimerId = null;
+      }
+      const content = buildPopupContentForGrid(gx, gy);
+      coordPopup.classList.remove("dragging-popup", "invalid-popup");
+      popupMain.textContent = content.main;
+      popupSub.textContent = content.sub;
+      coordPopup.classList.add("show");
+
+      mobilePopupTimerId = setTimeout(() => {
+        mobilePopupTimerId = null;
+        if (!draggingTarget) {
+          coordPopup.classList.remove("show");
+        }
+      }, MOBILE_POPUP_DURATION_MS);
+    }
+
+    function updateCenterBaseBadge() {
+      centerBaseBadge.textContent = `中心基準 X:${CENTER_GAME_BASE.x}, Y:${CENTER_GAME_BASE.y}`;
+      modalCenterXLabel.textContent = String(CENTER_GAME_BASE.x);
+      modalCenterYLabel.textContent = String(CENTER_GAME_BASE.y);
+    }
+
+    openCenterModalBtn.addEventListener("click", () => {
+      if (!isEditable) return;
+      centerXInput.value = String(CENTER_GAME_BASE.x);
+      centerYInput.value = String(CENTER_GAME_BASE.y);
+      centerModalError.textContent = "";
+      centerModal.classList.add("open");
+      setTimeout(() => centerXInput.focus(), 30);
+    });
+
+    closeCenterModalBtn.addEventListener("click", () => {
+      centerModal.classList.remove("open");
+      centerModalError.textContent = "";
+    });
+
+    centerModal.addEventListener("click", (e) => {
+      if (e.target === centerModal) {
+        centerModal.classList.remove("open");
+        centerModalError.textContent = "";
+      }
+    });
+
+    resetCenterDefaultBtn.addEventListener("click", () => {
+      centerXInput.value = String(DEFAULT_CENTER_GAME_BASE.x);
+      centerYInput.value = String(DEFAULT_CENTER_GAME_BASE.y);
+      centerModalError.textContent = "";
+    });
+
+    applyCenterBtn.addEventListener("click", () => {
+      if (!isEditable) return;
+      const nx = Number(centerXInput.value.trim());
+      const ny = Number(centerYInput.value.trim());
+      if (!Number.isInteger(nx) || !Number.isInteger(ny)) {
+        centerModalError.textContent = "X座標・Y座標ともに整数を入力してください。";
+        return;
+      }
+      CENTER_GAME_BASE = { x: nx, y: ny };
+      updateCenterBaseBadge();
+      centerModal.classList.remove("open");
+      centerModalError.textContent = "";
+
+      renderRoster();
+      syncToolbar();
+      render();
+      persistChanges();
+
+      statusMsg.classList.add("ok");
+      statusMsg.textContent = `中心基準座標を X:${nx}, Y:${ny} に更新しました。`;
+    });
+
+    function createDefaultMembers() {
+      return Array.from({ length: ROSTER_LIMIT }, (_, idx) => ({
+        id: idx + 1,
+        name: `メンバー${String(idx + 1).padStart(3, "0")}`,
+        power: (ROSTER_LIMIT - idx) * 100000,
+        type: "city",
+        x: null,
+        y: null
+      }));
+    }
+
+    let facilities = [];
+    let nextFacilityId = 1;
+
+    let members = createDefaultMembers();
+    let orderedMemberIds = members.map((m) => m.id);
+
+    let selectedEmptyGridBase = null;
+    let selectedTarget = null;
+    let isMoveMode = false;
+
+    function loadBackupArray(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return [];
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function saveBackupArray(key, arr) {
+      try {
+        localStorage.setItem(key, JSON.stringify(arr));
+      } catch (_) {}
+    }
+
+    function createSnapshotData(kindLabel, dateKey, timestampLabel) {
+      return {
+        id: `${kindLabel}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        kind: kindLabel,
+        dateKey,
+        timestamp: timestampLabel,
+        createdAt: Date.now(),
+        centerGameBase: { ...CENTER_GAME_BASE },
+        members: JSON.parse(JSON.stringify(members)),
+        orderedMemberIds: [...orderedMemberIds],
+        facilities: JSON.parse(JSON.stringify(facilities)),
+        nextFacilityId
+      };
+    }
+
+    function recordBackupsOnUnlockEdit() {
+      const now = new Date();
+      const dateKey = getLocalDateKey(now);
+      const timestampLabel = getLocalTimestampLabel(now);
+
+      const editList = loadBackupArray(EDIT_BACKUPS_KEY).sort((a, b) => a.createdAt - b.createdAt);
+      editList.push(createSnapshotData("edit", dateKey, timestampLabel));
+      while (editList.length > MAX_EDIT_BACKUPS) {
+        editList.shift();
+      }
+      saveBackupArray(EDIT_BACKUPS_KEY, editList);
+
+      const dailyList = loadBackupArray(DAILY_BACKUPS_KEY).sort((a, b) =>
+        a.dateKey.localeCompare(b.dateKey)
+      );
+      const alreadyExistsToday = dailyList.some((item) => item.dateKey === dateKey);
+      let createdDaily = false;
+      if (!alreadyExistsToday) {
+        dailyList.push(createSnapshotData("daily", dateKey, timestampLabel));
+        dailyList.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+        while (dailyList.length > MAX_DAILY_BACKUPS) {
+          dailyList.shift();
+        }
+        saveBackupArray(DAILY_BACKUPS_KEY, dailyList);
+        createdDaily = true;
+      }
+
+      return { createdDaily, dateKey, timestampLabel };
+    }
+
+    function downloadBackupJson(snapshot) {
+      const safeStamp = snapshot.timestamp.replace(/[:\s]/g, "_");
+      const filename =
+        snapshot.kind === "daily"
+          ? `kingshot_daily_${snapshot.dateKey}_${safeStamp}.json`
+          : `kingshot_edit_${safeStamp}.json`;
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function restoreFromBackupSnapshot(snapshot) {
+      if (!snapshot || !Array.isArray(snapshot.members)) return;
+      if (snapshot.centerGameBase && Number.isInteger(snapshot.centerGameBase.x) && Number.isInteger(snapshot.centerGameBase.y)) {
+        CENTER_GAME_BASE = { x: snapshot.centerGameBase.x, y: snapshot.centerGameBase.y };
+        updateCenterBaseBadge();
+      }
+
+      members = snapshot.members.slice(0, ROSTER_LIMIT).map((m, idx) => ({
+        id: Number.isInteger(m.id) ? m.id : idx + 1,
+        name: typeof m.name === "string" ? m.name : "",
+        power: Number.isFinite(Number(m.power)) ? Number(m.power) : 0,
+        type: FACILITY_TYPES[m.type] ? m.type : "city",
+        x: Number.isInteger(m.x) ? m.x : null,
+        y: Number.isInteger(m.y) ? m.y : null
+      }));
+      while (members.length < ROSTER_LIMIT) {
+        const idx = members.length;
+        members.push({ id: idx + 1, name: "", power: 0, type: "city", x: null, y: null });
+      }
+      orderedMemberIds = Array.isArray(snapshot.orderedMemberIds)
+        ? [...snapshot.orderedMemberIds]
+        : members.map((m) => m.id);
+      resortByPower();
+
+      facilities = Array.isArray(snapshot.facilities)
+        ? snapshot.facilities.map((f, idx) => ({
+            id: Number.isInteger(f.id) ? f.id : idx + 1,
+            name: typeof f.name === "string" ? f.name : `施設${idx + 1}`,
+            type: FACILITY_TYPES[f.type]?.isExtraFacility ? f.type : "trap",
+            x: Number.isInteger(f.x) ? f.x : null,
+            y: Number.isInteger(f.y) ? f.y : null
+          }))
+        : [];
+      nextFacilityId = Number.isInteger(snapshot.nextFacilityId)
+        ? snapshot.nextFacilityId
+        : facilities.reduce((max, f) => Math.max(max, f.id + 1), 1);
+
+      selectedTarget = { kind: "member", id: orderedMemberIds[0] || 1 };
+      selectedEmptyGridBase = null;
+      isMoveMode = false;
+
+      const selectedEnt = getSelectedEntity();
+      if (selectedEnt) {
+        facilityTypeSelect.value = selectedEnt.type;
+        itemNameInput.value = selectedEnt.name;
+      }
+
+      renderRoster();
+      syncToolbar();
+      render();
+      persistChanges();
+      backupModal.classList.remove("open");
+
+      statusMsg.classList.add("ok");
+      statusMsg.textContent = `バックアップ（${snapshot.timestamp}）から復元しました。`;
+    }
+
+    function renderBackupModalLists() {
+      const editList = [...loadBackupArray(EDIT_BACKUPS_KEY)].reverse();
+      const dailyList = [...loadBackupArray(DAILY_BACKUPS_KEY)].reverse();
+
+      const buildGroupDom = (container, items, emptyText) => {
+        container.innerHTML = "";
+        if (items.length === 0) {
+          const div = document.createElement("div");
+          div.className = "backup-sub";
+          div.textContent = emptyText;
+          container.appendChild(div);
+          return;
+        }
+        items.forEach((snap) => {
+          const placedM = (snap.members || []).filter((m) => m.x !== null && m.y !== null).length;
+          const facCount = (snap.facilities || []).length;
+
+          const row = document.createElement("div");
+          row.className = "backup-item";
+
+          const meta = document.createElement("div");
+          meta.className = "backup-meta";
+
+          const timeEl = document.createElement("div");
+          timeEl.className = "backup-time";
+          timeEl.textContent =
+            snap.kind === "daily"
+              ? `[${snap.dateKey}] 初回解除：${snap.timestamp}`
+              : `切替日時：${snap.timestamp}`;
+
+          const subEl = document.createElement("div");
+          subEl.className = "backup-sub";
+          subEl.textContent = `メンバー配置：${placedM}名 ／ 追加施設：${facCount}件`;
+
+          meta.append(timeEl, subEl);
+
+          const btns = document.createElement("div");
+          btns.className = "backup-btns";
+
+          const dlBtn = document.createElement("button");
+          dlBtn.type = "button";
+          dlBtn.textContent = "JSON保存";
+          dlBtn.addEventListener("click", () => downloadBackupJson(snap));
+
+          const restoreBtn = document.createElement("button");
+          restoreBtn.type = "button";
+          restoreBtn.className = "primary";
+          restoreBtn.disabled = !isEditable;
+          restoreBtn.title = isEditable ? "このバックアップへ戻す" : "編集モードに切り替えると復元できます";
+          restoreBtn.textContent = "復元";
+          restoreBtn.addEventListener("click", () => {
+            if (!isEditable) return;
+            if (!confirm(`${snap.timestamp} のバックアップ状態へ復元しますか？`)) return;
+            restoreFromBackupSnapshot(snap);
+          });
+
+          btns.append(dlBtn, restoreBtn);
+          row.append(meta, btns);
+          container.appendChild(row);
+        });
+      };
+
+      buildGroupDom(
+        editBackupListEl,
+        editList,
+        "編集切替バックアップはまだありません（編集モードへ切り替えると作成されます）。"
+      );
+      buildGroupDom(
+        dailyBackupListEl,
+        dailyList,
+        "日別初回バックアップはまだありません（その日最初の編集切替時に作成されます）。"
+      );
+    }
+
+    function applyEditModeState(editable, fromUserUnlock = false) {
+      isEditable = !!editable;
+      document.body.classList.toggle("view-only", !isEditable);
+
+      if (isEditable) {
+        modeBadge.textContent = "✏️ 編集モード";
+        toggleEditModeBtn.textContent = "閲覧モードへ戻す";
+
+        if (fromUserUnlock) {
+          const result = recordBackupsOnUnlockEdit();
+          statusMsg.classList.add("ok");
+          statusMsg.textContent = result.createdDaily
+            ? `編集モードに切替（直近5件保存＋本日の初回日別バックアップを直近3日枠に保存しました：${result.timestampLabel}）`
+            : `編集モードに切替（直近5件バックアップを保存しました：${result.timestampLabel}）`;
+        }
+      } else {
+        modeBadge.textContent = "🔒 閲覧モード";
+        toggleEditModeBtn.textContent = "編集モードへ切替";
+        draggingTarget = null;
+        dragPreviewGridBase = null;
+        isMoveMode = false;
+        hideCoordPopup();
+        statusMsg.classList.remove("ok");
+        statusMsg.textContent = "閲覧モード中です。編集するには上部の「編集モードへ切替」を押してください。";
+      }
+
+      syncToolbar();
+      render();
+    }
+
+    function openPinModal() {
+      pinInput.value = "";
+      pinError.textContent = "";
+      pinModal.classList.add("open");
+      setTimeout(() => pinInput.focus(), 30);
+    }
+
+    function verifyAndUnlockEditMode() {
+      const entered = pinInput.value.trim();
+      if (!entered || entered !== EDIT_PIN) {
+        pinError.textContent = "パスコードが正しくありません。";
+        pinInput.focus();
+        return;
+      }
+      pinModal.classList.remove("open");
+      pinError.textContent = "";
+      applyEditModeState(true, true);
+    }
+
+    toggleEditModeBtn.addEventListener("click", () => {
+      if (!isEditable) {
+        openPinModal();
+      } else {
+        applyEditModeState(false, false);
+      }
+    });
+
+    cancelPinBtn.addEventListener("click", () => {
+      pinModal.classList.remove("open");
+      pinError.textContent = "";
+    });
+
+    pinModal.addEventListener("click", (e) => {
+      if (e.target === pinModal) {
+        pinModal.classList.remove("open");
+        pinError.textContent = "";
+      }
+    });
+
+    submitPinBtn.addEventListener("click", verifyAndUnlockEditMode);
+    pinInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        verifyAndUnlockEditMode();
+      }
+    });
+
+    openBackupModalBtn.addEventListener("click", () => {
+      renderBackupModalLists();
+      backupModal.classList.add("open");
+    });
+
+    closeBackupModalBtn.addEventListener("click", () => {
+      backupModal.classList.remove("open");
+    });
+
+    backupModal.addEventListener("click", (e) => {
+      if (e.target === backupModal) {
+        backupModal.classList.remove("open");
+      }
+    });
+
+    function detectInitialUiMode() {
+      try {
+        const saved = localStorage.getItem(UI_MODE_STORAGE_KEY);
+        if (saved === "mobile" || saved === "pc") return saved;
+      } catch (_) {}
+      const isNarrow = window.innerWidth <= 820;
+      const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      return isNarrow || (isTouchDevice && window.innerWidth <= 960) ? "mobile" : "pc";
+    }
+
+    function applyUiMode(mode, persist = false) {
+      currentUiMode = mode === "mobile" ? "mobile" : "pc";
+      const isMobile = currentUiMode === "mobile";
+
+      hideCoordPopup();
+      document.body.classList.toggle("mobile-mode", isMobile);
+      if (uiModeMobileBtn) uiModeMobileBtn.classList.toggle("active", isMobile);
+      if (uiModePcBtn) uiModePcBtn.classList.toggle("active", !isMobile);
+
+      if (isMobile) {
+        setMobileTab(mobileTab);
+      } else {
+        document.body.classList.remove("mobile-tab-map", "mobile-tab-list");
+        canvasWrap.style.height = "";
+      }
+
+      if (persist) {
+        try {
+          localStorage.setItem(UI_MODE_STORAGE_KEY, currentUiMode);
+        } catch (_) {}
+      }
+
+      requestAnimationFrame(() => resizeCanvas());
+    }
+
+    function setMobileTab(tab) {
+      mobileTab = tab;
+      document.body.classList.toggle("mobile-tab-map", tab === "map");
+      document.body.classList.toggle("mobile-tab-list", tab === "list");
+      if (tab === "split") {
+        canvasWrap.style.height = canvasWrap.style.height || "48%";
+      } else {
+        canvasWrap.style.height = "";
+      }
+
+      mobileViewTabs.querySelectorAll("button").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.tab === tab);
+      });
+
+      requestAnimationFrame(() => resizeCanvas());
+    }
+
+    if (uiModeMobileBtn) {
+      uiModeMobileBtn.addEventListener("click", () => applyUiMode("mobile", true));
+    }
+    if (uiModePcBtn) {
+      uiModePcBtn.addEventListener("click", () => applyUiMode("pc", true));
+    }
+
+    mobileViewTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-tab]");
+      if (!btn) return;
+      setMobileTab(btn.dataset.tab);
+    });
+
+    function getAllMapEntities() {
+      const mList = members.map((m) => ({ ...m, kind: "member" }));
+      const fList = facilities.map((f) => ({ ...f, kind: "facility", power: 0 }));
+      return [...mList, ...fList];
+    }
+
+    function getSelectedEntity() {
+      if (!selectedTarget) return null;
+      if (selectedTarget.kind === "facility") {
+        const f = facilities.find((item) => item.id === selectedTarget.id);
+        return f ? { ...f, kind: "facility", power: 0 } : null;
+      }
+      const m = members.find((item) => item.id === selectedTarget.id);
+      return m ? { ...m, kind: "member" } : null;
+    }
+
+    function saveToLocalStorageOnly() {
+      try {
+        const payload = {
+          version: 5,
+          centerGameBase: { ...CENTER_GAME_BASE },
+          members,
+          orderedMemberIds,
+          facilities,
+          nextFacilityId,
+          panelWidth: rosterPanel.style.width || "",
+          mobileMapHeight: canvasWrap.style.height || ""
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (_) {}
+    }
+
+    function persistChanges() {
+      saveToLocalStorageOnly();
+      saveToCloud();
+    }
+
+    function loadFromStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed.members) || parsed.members.length === 0) return false;
+
+        if (parsed.centerGameBase && Number.isInteger(parsed.centerGameBase.x) && Number.isInteger(parsed.centerGameBase.y)) {
+          CENTER_GAME_BASE = { x: parsed.centerGameBase.x, y: parsed.centerGameBase.y };
+        }
+
+        const restored = parsed.members.slice(0, ROSTER_LIMIT).map((m, idx) => ({
+          id: Number.isInteger(m.id) ? m.id : idx + 1,
+          name: typeof m.name === "string" ? m.name : "",
+          power: Number.isFinite(Number(m.power)) ? Number(m.power) : 0,
+          type: FACILITY_TYPES[m.type] ? m.type : "city",
+          x: Number.isInteger(m.x) ? m.x : null,
+          y: Number.isInteger(m.y) ? m.y : null
+        }));
+
+        while (restored.length < ROSTER_LIMIT) {
+          const idx = restored.length;
+          restored.push({ id: idx + 1, name: "", power: 0, type: "city", x: null, y: null });
+        }
+
+        members = restored;
+        const idSet = new Set(members.map((m) => m.id));
+        if (Array.isArray(parsed.orderedMemberIds)) {
+          const validOrder = parsed.orderedMemberIds.filter((id) => idSet.has(id));
+          for (const m of members) {
+            if (!validOrder.includes(m.id)) validOrder.push(m.id);
+          }
+          orderedMemberIds = validOrder;
+        } else {
+          resortByPower();
+        }
+
+        if (Array.isArray(parsed.facilities)) {
+          facilities = parsed.facilities.map((f, idx) => ({
+            id: Number.isInteger(f.id) ? f.id : idx + 1,
+            name: typeof f.name === "string" ? f.name : `施設${idx + 1}`,
+            type: FACILITY_TYPES[f.type]?.isExtraFacility ? f.type : "trap",
+            x: Number.isInteger(f.x) ? f.x : null,
+            y: Number.isInteger(f.y) ? f.y : null
+          }));
+          nextFacilityId = Number.isInteger(parsed.nextFacilityId)
+            ? parsed.nextFacilityId
+            : facilities.reduce((max, f) => Math.max(max, f.id + 1), 1);
+        }
+
+        if (typeof parsed.panelWidth === "string" && parsed.panelWidth.trim()) {
+          rosterPanel.style.width = parsed.panelWidth;
+        }
+        if (typeof parsed.mobileMapHeight === "string" && parsed.mobileMapHeight.trim()) {
+          canvasWrap.style.height = parsed.mobileMapHeight;
+        }
+
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function resortByPower() {
+      orderedMemberIds = [...members]
+        .sort((a, b) => {
+          if (b.power !== a.power) return b.power - a.power;
+          return a.id - b.id;
+        })
+        .map((m) => m.id);
+    }
+
+    function getOrderedMembers() {
+      const map = new Map(members.map((m) => [m.id, m]));
+      return orderedMemberIds.map((id) => map.get(id)).filter(Boolean);
+    }
+
+    function buildExportRows() {
+      const sortedMembers = [...members].sort((a, b) => {
+        if (b.power !== a.power) return b.power - a.power;
+        return a.id - b.id;
+      });
+
+      const memberRows = sortedMembers.map((m) => {
+        const isPlaced = m.x !== null && m.y !== null;
+        const gCoord = isPlaced ? gridToGame(m.x, m.y) : { x: "", y: "" };
+        const def = FACILITY_TYPES[m.type] || FACILITY_TYPES.city;
+        return { name: m.name, power: m.power, x: gCoord.x, y: gCoord.y, facility: def.label };
+      });
+
+      const facilityRows = facilities.map((f) => {
+        const isPlaced = f.x !== null && f.y !== null;
+        const gCoord = isPlaced ? gridToGame(f.x, f.y) : { x: "", y: "" };
+        const def = FACILITY_TYPES[f.type] || FACILITY_TYPES.trap;
+        return { name: f.name, power: 0, x: gCoord.x, y: gCoord.y, facility: def.label };
+      });
+
+      return [...memberRows, ...facilityRows];
+    }
+
+    function buildExcelTsvText() {
+      const rowsData = buildExportRows();
+      const header = ["名前", "総力", "X座標", "Y座標", "施設"].join("\t");
+      const body = rowsData.map((r) => [r.name, r.power, r.x, r.y, r.facility].join("\t"));
+      return [header, ...body].join("\n");
+    }
+
+    function escapeCsvCell(val) {
+      const str = String(val ?? "");
+      if (/[",\r\n]/.test(str)) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    }
+
+    function buildCsvText() {
+      const rowsData = buildExportRows();
+      const header = ["名前", "総力", "X座標", "Y座標", "施設"].map(escapeCsvCell).join(",");
+      const body = rowsData.map((r) => [r.name, r.power, r.x, r.y, r.facility].map(escapeCsvCell).join(","));
+      return "\uFEFF" + [header, ...body].join("\r\n");
+    }
+
+    function getActiveFacilityType() {
+      return FACILITY_TYPES[facilityTypeSelect.value] || FACILITY_TYPES.city;
+    }
+
+    function getTileSize() {
+      return { tileW: baseTileW * zoom, tileH: baseTileH * zoom };
+    }
+
+    function getOrigin() {
+      return { ox: baseOriginX + panX, oy: baseOriginY + panY };
+    }
+
+    function resizeCanvas() {
+      if (canvasWrap.clientWidth === 0 || canvasWrap.clientHeight === 0) return;
+
+      const wrapW = Math.max(180, canvasWrap.clientWidth - 4);
+      const wrapH = Math.max(90, canvasWrap.clientHeight - 4);
+
+      canvas.width = wrapW;
+      canvas.height = wrapH;
+
+      const totalSpan = cols + rows;
+      const maxTileWByWidth = (wrapW - 20) / (totalSpan / 2);
+      const maxTileWByHeight = ((wrapH - 20) * 2) / (totalSpan / 2 + 1);
+
+      baseTileW = Math.max(6, Math.floor(Math.min(maxTileWByWidth, maxTileWByHeight)));
+      baseTileH = Math.floor(baseTileW / 2);
+
+      const gridHeight = totalSpan * (baseTileH / 2) + baseTileH;
+      baseOriginX = canvas.width / 2;
+      baseOriginY = Math.max(8, (canvas.height - gridHeight) / 2 + baseTileH / 2);
+
+      render();
+    }
+
+    function toGrid(mx, my) {
+      const { tileW, tileH } = getTileSize();
+      const { ox, oy } = getOrigin();
+      const dx = (mx - ox) / (tileW / 2);
+      const dy = (my - oy) / (tileH / 2);
+      const gx = Math.round((dx + dy) / 2);
+      const gy = Math.round((dy - dx) / 2);
+      return { x: gx, y: gy };
+    }
+
+    function getAreaTiles(bx, by, size) {
+      const tiles = [];
+      for (let dy = 0; dy < size; dy++) {
+        for (let dx = 0; dx < size; dx++) {
+          tiles.push({ x: bx - dx, y: by - dy, isBase: dx === 0 && dy === 0 });
+        }
+      }
+      return tiles;
+    }
+
+    function canPlaceAt(bx, by, size, ignoreTarget = null, customEntities = null) {
+      if (!Number.isInteger(bx) || !Number.isInteger(by)) {
+        return { ok: false, reason: "座標は整数で入力してください。" };
+      }
+      const tiles = getAreaTiles(bx, by, size);
+      for (const t of tiles) {
+        if (t.x < 0 || t.x >= cols || t.y < 0 || t.y >= rows) {
+          return { ok: false, reason: `${size}×${size}の枠がマップ範囲外になります。` };
+        }
+      }
+
+      const list = customEntities || getAllMapEntities();
+      for (const ent of list) {
+        if (ignoreTarget && ent.kind === ignoreTarget.kind && ent.id === ignoreTarget.id) continue;
+        if (ent.x === null || ent.y === null) continue;
+        const eDef = FACILITY_TYPES[ent.type] || FACILITY_TYPES.city;
+        const occupied = getAreaTiles(ent.x, ent.y, eDef.size);
+        for (const t of tiles) {
+          if (occupied.some((o) => o.x === t.x && o.y === t.y)) {
+            return { ok: false, reason: `「${ent.name}」とマスが重なっています。` };
+          }
+        }
+      }
+
+      return { ok: true, reason: "" };
+    }
+
+    function findEntityAtTile(gx, gy) {
+      const all = getAllMapEntities();
+      return (
+        all.find((ent) => {
+          if (ent.x === null || ent.y === null) return false;
+          const def = FACILITY_TYPES[ent.type] || FACILITY_TYPES.city;
+          return getAreaTiles(ent.x, ent.y, def.size).some((t) => t.x === gx && t.y === gy);
+        }) || null
+      );
+    }
+
+    function drawDiamondOnContext(targetCtx, x, y, tileW, tileH, ox, oy, options = {}) {
+      const sx = ox + (x - y) * (tileW / 2);
+      const sy = oy + (x + y) * (tileH / 2);
+      const hw = tileW / 2;
+      const hh = tileH / 2;
+
+      targetCtx.beginPath();
+      targetCtx.moveTo(sx, sy - hh);
+      targetCtx.lineTo(sx + hw, sy);
+      targetCtx.lineTo(sx, sy + hh);
+      targetCtx.lineTo(sx - hw, sy);
+      targetCtx.closePath();
+
+      if (options.fillStyle) {
+        targetCtx.fillStyle = options.fillStyle;
+        targetCtx.fill();
+      }
+
+      if (options.lineWidth !== 0) {
+        targetCtx.strokeStyle = options.strokeStyle || "rgba(148, 163, 184, 0.22)";
+        targetCtx.lineWidth = options.lineWidth || 0.7;
+        targetCtx.stroke();
+      }
+    }
+
+    function drawDiamond(x, y, options = {}) {
+      const { tileW, tileH } = getTileSize();
+      const { ox, oy } = getOrigin();
+      drawDiamondOnContext(ctx, x, y, tileW, tileH, ox, oy, options);
+    }
+
+    function drawAreaOutlineOnContext(targetCtx, bx, by, size, tileW, tileH, ox, oy, strokeStyle, lineWidth = 2.2) {
+      const hw = tileW / 2;
+      const hh = tileH / 2;
+      const minX = bx - (size - 1);
+      const minY = by - (size - 1);
+
+      const topCenterX = ox + (minX - minY) * hw;
+      const topCenterY = oy + (minX + minY) * hh;
+      const pTop = { x: topCenterX, y: topCenterY - hh };
+
+      const rightCenterX = ox + (bx - minY) * hw;
+      const rightCenterY = oy + (bx + minY) * hh;
+      const pRight = { x: rightCenterX + hw, y: rightCenterY };
+
+      const bottomCenterX = ox + (bx - by) * hw;
+      const bottomCenterY = oy + (bx + by) * hh;
+      const pBottom = { x: bottomCenterX, y: bottomCenterY + hh };
+
+      const leftCenterX = ox + (minX - by) * hw;
+      const leftCenterY = oy + (minX + by) * hh;
+      const pLeft = { x: leftCenterX - hw, y: leftCenterY };
+
+      targetCtx.save();
+      targetCtx.beginPath();
+      targetCtx.moveTo(pTop.x, pTop.y);
+      targetCtx.lineTo(pRight.x, pRight.y);
+      targetCtx.lineTo(pBottom.x, pBottom.y);
+      targetCtx.lineTo(pLeft.x, pLeft.y);
+      targetCtx.closePath();
+
+      targetCtx.lineJoin = "round";
+      targetCtx.strokeStyle = "rgba(10, 14, 22, 0.88)";
+      targetCtx.lineWidth = lineWidth + 1.5;
+      targetCtx.stroke();
+
+      targetCtx.strokeStyle = strokeStyle;
+      targetCtx.lineWidth = lineWidth;
+      targetCtx.stroke();
+      targetCtx.restore();
+    }
+
+    function drawAreaOutline(bx, by, size, strokeStyle, lineWidth = 2.2) {
+      const { tileW, tileH } = getTileSize();
+      const { ox, oy } = getOrigin();
+      drawAreaOutlineOnContext(ctx, bx, by, size, tileW, tileH, ox, oy, strokeStyle, lineWidth);
+    }
+
+    function drawItemLabelOnContext(targetCtx, entity, size, isSelected, tileW, tileH, ox, oy, overrideGridBase = null) {
+      const bx = overrideGridBase ? overrideGridBase.x : entity.x;
+      const by = overrideGridBase ? overrideGridBase.y : entity.y;
+      const offset = (size - 1) / 2;
+      const lx = bx - offset;
+      const ly = by - offset;
+      const sx = ox + (lx - ly) * (tileW / 2);
+      const sy = oy + (lx + ly) * (tileH / 2);
+      const fontSize = Math.max(7, Math.min(18, Math.floor(tileH * (size === 1 ? 0.65 : 0.85))));
+
+      targetCtx.font = `bold ${fontSize}px sans-serif`;
+      targetCtx.textAlign = "center";
+      targetCtx.textBaseline = "middle";
+
+      targetCtx.lineWidth = 3.2;
+      targetCtx.strokeStyle = "rgba(15, 23, 42, 0.94)";
+      targetCtx.strokeText(entity.name, sx, sy);
+
+      targetCtx.fillStyle = isSelected ? "#fef08a" : "#f8fafc";
+      targetCtx.fillText(entity.name, sx, sy);
+    }
+
+    function drawItemLabel(entity, size, isSelected, overrideGridBase = null) {
+      const { tileW, tileH } = getTileSize();
+      const { ox, oy } = getOrigin();
+      drawItemLabelOnContext(ctx, entity, size, isSelected, tileW, tileH, ox, oy, overrideGridBase);
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          drawDiamond(x, y);
+        }
+      }
+
+      const centerTiles = getAreaTiles(CENTER_GRID_BASE.x, CENTER_GRID_BASE.y, 2);
+      for (const t of centerTiles) {
+        drawDiamond(t.x, t.y, {
+          fillStyle: t.isBase
+            ? "rgba(250, 204, 21, 0.16)"
+            : "rgba(125, 211, 252, 0.12)",
+          lineWidth: 0
+        });
+      }
+
+      const all = getAllMapEntities().filter((ent) => ent.x !== null && ent.y !== null);
+      all.sort((a, b) => {
+        const aSel = selectedTarget && selectedTarget.kind === a.kind && selectedTarget.id === a.id ? 1 : 0;
+        const bSel = selectedTarget && selectedTarget.kind === b.kind && selectedTarget.id === b.id ? 1 : 0;
+        return aSel - bSel;
+      });
+
+      for (const ent of all) {
+        const isDraggingThis =
+          draggingTarget && draggingTarget.kind === ent.kind && draggingTarget.id === ent.id;
+        const def = FACILITY_TYPES[ent.type] || FACILITY_TYPES.city;
+        const isSelected =
+          selectedTarget && selectedTarget.kind === ent.kind && selectedTarget.id === ent.id;
+
+        const tiles = getAreaTiles(ent.x, ent.y, def.size);
+        for (const t of tiles) {
+          let fill;
+          if (isDraggingThis) {
+            fill = "rgba(148, 163, 184, 0.16)";
+          } else if (isSelected) {
+            fill = t.isBase ? "rgba(251, 191, 36, 0.60)" : "rgba(245, 158, 11, 0.44)";
+          } else {
+            fill = t.isBase ? def.placedBaseFill : def.placedSubFill;
+          }
+          drawDiamond(t.x, t.y, { fillStyle: fill, lineWidth: 0 });
+        }
+
+        if (!isDraggingThis) {
+          drawAreaOutline(
+            ent.x,
+            ent.y,
+            def.size,
+            isSelected ? "#ffffff" : def.borderStroke,
+            isSelected ? 2.8 : 2.2
+          );
+          drawItemLabel(ent, def.size, isSelected);
+        }
+      }
+
+      if (draggingTarget && dragPreviewGridBase) {
+        const dragEnt = getAllMapEntities().find(
+          (e) => e.kind === draggingTarget.kind && e.id === draggingTarget.id
+        );
+        if (dragEnt) {
+          const def = FACILITY_TYPES[dragEnt.type] || FACILITY_TYPES.city;
+          const tiles = getAreaTiles(dragPreviewGridBase.x, dragPreviewGridBase.y, def.size);
+
+          for (const t of tiles) {
+            if (t.x >= 0 && t.x < cols && t.y >= 0 && t.y < rows) {
+              let fill;
+              if (!dragPreviewValid) {
+                fill = t.isBase ? "rgba(248, 113, 113, 0.56)" : "rgba(239, 68, 68, 0.38)";
+              } else {
+                fill = t.isBase ? "rgba(250, 204, 21, 0.64)" : "rgba(56, 189, 248, 0.44)";
+              }
+              drawDiamond(t.x, t.y, { fillStyle: fill, lineWidth: 0 });
+            }
+          }
+
+          drawAreaOutline(
+            dragPreviewGridBase.x,
+            dragPreviewGridBase.y,
+            def.size,
+            dragPreviewValid ? "#ffffff" : "#fca5a5",
+            2.6
+          );
+          drawItemLabel(dragEnt, def.size, true, dragPreviewGridBase);
+        }
+      }
+
+      if (selectedEmptyGridBase) {
+        const activeDef = getActiveFacilityType();
+        const tiles = getAreaTiles(selectedEmptyGridBase.x, selectedEmptyGridBase.y, activeDef.size);
+        for (const t of tiles) {
+          if (t.x >= 0 && t.x < cols && t.y >= 0 && t.y < rows) {
+            drawDiamond(t.x, t.y, {
+              fillStyle: t.isBase
+                ? "rgba(250, 204, 21, 0.40)"
+                : "rgba(56, 189, 248, 0.30)",
+              lineWidth: 0
+            });
+          }
+        }
+        drawAreaOutline(
+          selectedEmptyGridBase.x,
+          selectedEmptyGridBase.y,
+          activeDef.size,
+          "#38bdf8",
+          2.1
+        );
+      }
+    }
+
+    function exportFullMapPng() {
+      const expTileW = 48;
+      const expTileH = 24;
+      const totalSpan = cols + rows;
+      const padX = 48;
+      const padTop = 56;
+      const padBottom = 40;
+
+      const expW = (totalSpan / 2) * expTileW + padX * 2;
+      const expH = (totalSpan / 2) * expTileH + expTileH + padTop + padBottom;
+      const expOx = expW / 2;
+      const expOy = padTop + expTileH / 2;
+
+      const offCanvas = document.createElement("canvas");
+      offCanvas.width = expW;
+      offCanvas.height = expH;
+      const offCtx = offCanvas.getContext("2d");
+
+      offCtx.fillStyle = "#1c202a";
+      offCtx.fillRect(0, 0, expW, expH);
+
+      const all = getAllMapEntities();
+      const placedCount = all.filter((e) => e.x !== null && e.y !== null).length;
+      const now = new Date();
+      const dateLabel = getLocalTimestampLabel(now);
+
+      offCtx.fillStyle = "#e2e8f0";
+      offCtx.font = "bold 16px sans-serif";
+      offCtx.textAlign = "left";
+      offCtx.textBaseline = "top";
+      offCtx.fillText(`40×40 配置マップ（中心基準 X:${CENTER_GAME_BASE.x}, Y:${CENTER_GAME_BASE.y} ／ 配置済：${placedCount}件）`, 20, 16);
+
+      offCtx.fillStyle = "#94a3b8";
+      offCtx.font = "13px sans-serif";
+      offCtx.textAlign = "right";
+      offCtx.fillText(`出力日時：${dateLabel}`, expW - 20, 18);
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          drawDiamondOnContext(offCtx, x, y, expTileW, expTileH, expOx, expOy, {
+            strokeStyle: "rgba(148, 163, 184, 0.25)",
+            lineWidth: 0.9
+          });
+        }
+      }
+
+      const centerTiles = getAreaTiles(CENTER_GRID_BASE.x, CENTER_GRID_BASE.y, 2);
+      for (const t of centerTiles) {
+        drawDiamondOnContext(offCtx, t.x, t.y, expTileW, expTileH, expOx, expOy, {
+          fillStyle: t.isBase
+            ? "rgba(250, 204, 21, 0.16)"
+            : "rgba(125, 211, 252, 0.12)",
+          lineWidth: 0
+        });
+      }
+
+      for (const ent of all) {
+        if (ent.x === null || ent.y === null) continue;
+        const def = FACILITY_TYPES[ent.type] || FACILITY_TYPES.city;
+        const tiles = getAreaTiles(ent.x, ent.y, def.size);
+
+        for (const t of tiles) {
+          drawDiamondOnContext(offCtx, t.x, t.y, expTileW, expTileH, expOx, expOy, {
+            fillStyle: t.isBase ? def.placedBaseFill : def.placedSubFill,
+            lineWidth: 0
+          });
+        }
+
+        drawAreaOutlineOnContext(offCtx, ent.x, ent.y, def.size, expTileW, expTileH, expOx, expOy, def.borderStroke, 2.5);
+        drawItemLabelOnContext(offCtx, ent, def.size, false, expTileW, expTileH, expOx, expOy);
+      }
+
+      const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
+      const filename = `kingshot_map_40x40_${stamp}.png`;
+
+      const dataUrl = offCanvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      statusMsg.classList.add("ok");
+      statusMsg.textContent = `マップ全体画像を保存しました（${filename}）。`;
+    }
+
+    function updateRowSelectionClasses() {
+      const placedMemberCount = members.filter((m) => m.x !== null && m.y !== null).length;
+      const placedFacilityCount = facilities.filter((f) => f.x !== null && f.y !== null).length;
+      placedCountInfo.textContent = `配置済：${placedMemberCount}/${ROSTER_LIMIT}（施設${placedFacilityCount}）`;
+
+      rosterListEl.querySelectorAll(".member-row").forEach((rowEl) => {
+        const kind = rowEl.dataset.kind;
+        const id = Number(rowEl.dataset.entityId);
+        const isSel = !!(selectedTarget && selectedTarget.kind === kind && selectedTarget.id === id);
+        let isPlaced = false;
+        if (kind === "facility") {
+          const f = facilities.find((item) => item.id === id);
+          isPlaced = !!(f && f.x !== null && f.y !== null);
+        } else {
+          const m = members.find((item) => item.id === id);
+          isPlaced = !!(m && m.x !== null && m.y !== null);
+        }
+        rowEl.classList.toggle("selected", isSel);
+        rowEl.classList.toggle("placed", isPlaced);
+      });
+    }
+
+    function createEntityRowElement(ent, rankLabelText, isFacilityRow) {
+      const row = document.createElement("div");
+      const isPlaced = ent.x !== null && ent.y !== null;
+      const isSelected = !!(
+        selectedTarget && selectedTarget.kind === ent.kind && selectedTarget.id === ent.id
+      );
+      row.className = `member-row${isFacilityRow ? " facility-row" : ""}${isSelected ? " selected" : ""}${isPlaced ? " placed" : ""}`;
+      row.dataset.kind = ent.kind;
+      row.dataset.entityId = String(ent.id);
+
+      row.addEventListener("click", () => {
+        selectedTarget = { kind: ent.kind, id: ent.id };
+        selectedEmptyGridBase = null;
+        isMoveMode = false;
+        facilityTypeSelect.value = ent.type;
+        itemNameInput.value = ent.name;
+        syncToolbar();
+        updateRowSelectionClasses();
+        render();
+      });
+
+      const rankDiv = document.createElement("div");
+      rankDiv.className = "rank-badge";
+      rankDiv.textContent = rankLabelText;
+
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = ent.name;
+      nameInput.disabled = !isEditable;
+      nameInput.addEventListener("focus", () => {
+        if (!isEditable) return;
+        selectedTarget = { kind: ent.kind, id: ent.id };
+        facilityTypeSelect.value = ent.type;
+        itemNameInput.value = ent.name;
+        syncToolbar();
+        updateRowSelectionClasses();
+        render();
+      });
+      nameInput.addEventListener("input", (e) => {
+        if (!isEditable) return;
+        if (ent.kind === "facility") {
+          const targetF = facilities.find((f) => f.id === ent.id);
+          if (targetF) targetF.name = e.target.value;
+        } else {
+          const targetM = members.find((m) => m.id === ent.id);
+          if (targetM) targetM.name = e.target.value;
+        }
+        if (selectedTarget && selectedTarget.kind === ent.kind && selectedTarget.id === ent.id) {
+          itemNameInput.value = e.target.value;
+        }
+        syncToolbar();
+        render();
+        persistChanges();
+      });
+
+      let powerCell;
+      if (ent.kind === "facility") {
+        const fDef = FACILITY_TYPES[ent.type] || FACILITY_TYPES.trap;
+        powerCell = document.createElement("div");
+        powerCell.style.textAlign = "right";
+        powerCell.style.fontSize = "11px";
+        powerCell.style.color = "#cbd5e1";
+        powerCell.textContent = `${fDef.label}(${fDef.size}×${fDef.size})`;
+      } else {
+        const powerInput = document.createElement("input");
+        powerInput.type = "number";
+        powerInput.className = "power-input";
+        powerInput.value = String(ent.power);
+        powerInput.disabled = !isEditable;
+        powerInput.addEventListener("change", (e) => {
+          if (!isEditable) return;
+          const targetM = members.find((m) => m.id === ent.id);
+          if (!targetM) return;
+          const val = Number(e.target.value);
+          targetM.power = Number.isFinite(val) ? val : 0;
+          resortByPower();
+          renderRoster();
+          persistChanges();
+        });
+        powerCell = powerInput;
+      }
+
+      const coordPair = document.createElement("div");
+      coordPair.className = "coord-pair";
+
+      const gameCoord = isPlaced ? gridToGame(ent.x, ent.y) : { x: null, y: null };
+
+      const xInput = document.createElement("input");
+      xInput.type = "number";
+      xInput.className = "coord-input";
+      xInput.placeholder = "X";
+      xInput.value = gameCoord.x === null ? "" : String(gameCoord.x);
+      xInput.disabled = !isEditable;
+
+      const yInput = document.createElement("input");
+      yInput.type = "number";
+      yInput.className = "coord-input";
+      yInput.placeholder = "Y";
+      yInput.value = gameCoord.y === null ? "" : String(gameCoord.y);
+      yInput.disabled = !isEditable;
+
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "clear-coord-btn";
+      clearBtn.title = "配置解除";
+      clearBtn.textContent = "×";
+      clearBtn.disabled = !isEditable || !isPlaced;
+
+      const handleCoordEdit = () => {
+        if (!isEditable) return;
+        const rawX = xInput.value.trim();
+        const rawY = yInput.value.trim();
+        const targetObj =
+          ent.kind === "facility"
+            ? facilities.find((f) => f.id === ent.id)
+            : members.find((m) => m.id === ent.id);
+        if (!targetObj) return;
+
+        if (rawX === "" && rawY === "") {
+          targetObj.x = null;
+          targetObj.y = null;
+          clearBtn.disabled = true;
+          syncToolbar();
+          updateRowSelectionClasses();
+          render();
+          persistChanges();
+          return;
+        }
+
+        if (rawX === "" || rawY === "") return;
+
+        const gameX = Number(rawX);
+        const gameY = Number(rawY);
+        const gridCoord = gameToGrid(gameX, gameY);
+
+        targetObj.x = Math.round(gridCoord.x);
+        targetObj.y = Math.round(gridCoord.y);
+        clearBtn.disabled = false;
+        selectedTarget = { kind: ent.kind, id: ent.id };
+        selectedEmptyGridBase = null;
+        syncToolbar();
+        updateRowSelectionClasses();
+        render();
+        persistChanges();
+      };
+
+      xInput.addEventListener("change", handleCoordEdit);
+      yInput.addEventListener("change", handleCoordEdit);
+
+      const xSpan = document.createElement("span");
+      xSpan.textContent = ",";
+      coordPair.append(xInput, xSpan, yInput);
+
+      clearBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!isEditable) return;
+        const targetObj =
+          ent.kind === "facility"
+            ? facilities.find((f) => f.id === ent.id)
+            : members.find((m) => m.id === ent.id);
+        if (!targetObj) return;
+        targetObj.x = null;
+        targetObj.y = null;
+        xInput.value = "";
+        yInput.value = "";
+        clearBtn.disabled = true;
+        syncToolbar();
+        updateRowSelectionClasses();
+        render();
+        persistChanges();
+      });
+
+      row.append(rankDiv, nameInput, powerCell, coordPair, clearBtn);
+      return row;
+    }
+
+    function renderRoster() {
+      const ordered = getOrderedMembers();
+      const placedMemberCount = members.filter((m) => m.x !== null && m.y !== null).length;
+      const placedFacilityCount = facilities.filter((f) => f.x !== null && f.y !== null).length;
+      placedCountInfo.textContent = `配置済：${placedMemberCount}/${ROSTER_LIMIT}（施設${placedFacilityCount}）`;
+
+      const frag = document.createDocumentFragment();
+
+      ordered.forEach((m, index) => {
+        frag.appendChild(
+          createEntityRowElement({ ...m, kind: "member" }, String(index + 1), false)
+        );
+      });
+
+      if (facilities.length > 0) {
+        const divider = document.createElement("div");
+        divider.className = "section-divider";
+        divider.textContent = `追加施設（102行目〜：${facilities.length}件）`;
+        frag.appendChild(divider);
+
+        facilities.forEach((f, idx) => {
+          frag.appendChild(
+            createEntityRowElement({ ...f, kind: "facility", power: 0 }, `設${idx + 1}`, true)
+          );
+        });
+      }
+
+      rosterListEl.innerHTML = "";
+      rosterListEl.appendChild(frag);
+    }
+
+    function syncAllRowDisabledState() {
+      rosterListEl.querySelectorAll(".member-row").forEach((rowEl) => {
+        const kind = rowEl.dataset.kind;
+        const id = Number(rowEl.dataset.entityId);
+        let isPlaced = false;
+        if (kind === "facility") {
+          const f = facilities.find((item) => item.id === id);
+          isPlaced = !!(f && f.x !== null && f.y !== null);
+        } else {
+          const m = members.find((item) => item.id === id);
+          isPlaced = !!(m && m.x !== null && m.y !== null);
+        }
+        rowEl.querySelectorAll("input").forEach((inp) => {
+          inp.disabled = !isEditable;
+        });
+        const clearBtn = rowEl.querySelector(".clear-coord-btn");
+        if (clearBtn) {
+          clearBtn.disabled = !isEditable || !isPlaced;
+        }
+      });
+    }
+
+    function syncEntityCoordInputs(kind, id, x, y) {
+      const rowEl = rosterListEl.querySelector(`.member-row[data-kind="${kind}"][data-entity-id="${id}"]`);
+      if (!rowEl) return;
+      const inputs = rowEl.querySelectorAll("input.coord-input");
+      const clearBtn = rowEl.querySelector(".clear-coord-btn");
+      const isPlaced = x !== null && y !== null;
+      const gameCoord = isPlaced ? gridToGame(x, y) : { x: null, y: null };
+      if (inputs.length >= 2) {
+        inputs[0].value = gameCoord.x === null ? "" : String(gameCoord.x);
+        inputs[1].value = gameCoord.y === null ? "" : String(gameCoord.y);
+      }
+      if (clearBtn) {
+        clearBtn.disabled = !isEditable || !isPlaced;
+      }
+    }
+
+    function syncEntityNameInput(kind, id, name) {
+      const rowEl = rosterListEl.querySelector(`.member-row[data-kind="${kind}"][data-entity-id="${id}"]`);
+      if (!rowEl) return;
+      const textInput = rowEl.querySelector('input[type="text"]');
+      if (textInput && document.activeElement !== textInput) {
+        textInput.value = name;
+      }
+    }
+
+    function formatCoordText(gridBx, gridBy, size, prefix) {
+      const gBase = gridToGame(gridBx, gridBy);
+      const gMin = gridToGame(gridBx - (size - 1), gridBy - (size - 1));
+      if (currentUiMode === "mobile") {
+        return `${prefix} (${gBase.x}, ${gBase.y}) [${size}×${size}]`;
+      }
+      const pattern1 = `${prefix}：基準 (${gBase.x}, ${gBase.y}) ／ ${size}×${size}範囲 (${gMin.x}, ${gMin.y})〜(${gBase.x}, ${gBase.y})`;
+      const pattern2 = `[下部(${gBase.x},${gBase.y}) / 奥上(${gMin.x},${gMin.y})]`;
+      return `${pattern1} | ${pattern2}`;
+    }
+
+    function syncToolbar() {
+      syncAllRowDisabledState();
+
+      const selectedEnt = getSelectedEntity();
+      const activeDef = getActiveFacilityType();
+      const isSelectedPlaced = !!(selectedEnt && selectedEnt.x !== null && selectedEnt.y !== null);
+
+      placeBtn.disabled = !isEditable || !selectedEmptyGridBase;
+      if (activeDef.isExtraFacility && (!selectedEnt || selectedEnt.kind !== "facility")) {
+        placeBtn.textContent = `新規「${activeDef.label}」配置`;
+      } else if (selectedEnt) {
+        placeBtn.textContent = `「${selectedEnt.name || "無名"}」配置`;
+      } else {
+        placeBtn.textContent = "選択位置に配置";
+      }
+
+      renameBtn.disabled = !isEditable || !selectedEnt;
+      moveModeBtn.disabled = !isEditable || !isSelectedPlaced;
+      deleteBtn.disabled = !isEditable || !isSelectedPlaced;
+
+      if (isMoveMode && selectedEnt) {
+        moveModeBtn.textContent = "移動キャンセル";
+        moveModeBtn.classList.add("active-mode");
+      } else {
+        moveModeBtn.textContent = "移動先選択";
+        moveModeBtn.classList.remove("active-mode");
+      }
+
+      if (selectedEmptyGridBase) {
+        coordInfo.textContent = formatCoordText(
+          selectedEmptyGridBase.x,
+          selectedEmptyGridBase.y,
+          1,
+          "空きマス座標"
+        );
+      } else if (isSelectedPlaced) {
+        const eDef = FACILITY_TYPES[selectedEnt.type] || FACILITY_TYPES.city;
+        coordInfo.textContent = formatCoordText(
+          selectedEnt.x,
+          selectedEnt.y,
+          eDef.size,
+          `${eDef.label}「${selectedEnt.name}」`
+        );
+      } else if (selectedEnt) {
+        coordInfo.textContent = `選択：「${selectedEnt.name}」（未配置）`;
+      } else {
+        coordInfo.textContent = "選択座標：なし";
+      }
+    }
+
+    exportPngBtn.addEventListener("click", exportFullMapPng);
+
+    copyExcelBtn.addEventListener("click", async () => {
+      if (!isEditable) return;
+      const tsv = buildExcelTsvText();
+      try {
+        await navigator.clipboard.writeText(tsv);
+        statusMsg.classList.add("ok");
+        statusMsg.textContent = "1〜100位＋102行目〜施設をExcel形式でコピーしました。";
+      } catch (_) {
+        const tempArea = document.createElement("textarea");
+        tempArea.value = tsv;
+        document.body.appendChild(tempArea);
+        tempArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempArea);
+        statusMsg.classList.add("ok");
+        statusMsg.textContent = "1〜100位＋施設をクリップボードへコピーしました。";
+      }
+    });
+
+    downloadCsvBtn.addEventListener("click", () => {
+      if (!isEditable) return;
+      const csv = buildCsvText();
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const now = new Date();
+      const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+      a.href = url;
+      a.download = `kingshot_roster_100_${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      statusMsg.classList.add("ok");
+      statusMsg.textContent = `CSVファイル（kingshot_roster_100_${stamp}.csv）をダウンロードしました。`;
+    });
+
+    function parseBulkRows(text) {
+      const rawLines = text.split(/\r?\n/);
+      while (rawLines.length > 0 && rawLines[rawLines.length - 1].trim() === "") {
+        rawLines.pop();
+      }
+
+      const parsedRows = [];
+      for (const line of rawLines) {
+        let colsData;
+        if (line.includes("\t")) {
+          colsData = line.split("\t").map((s) => s.trim());
+        } else if (line.includes(",") || line.includes("，")) {
+          colsData = line.split(/[,，]/).map((s) => s.trim());
+        } else {
+          colsData = line.split(/\s+/).map((s) => s.trim());
+        }
+
+        if (
+          parsedRows.length === 0 &&
+          (colsData[0] === "名前" || colsData[0] === "プレイヤー名") &&
+          (colsData[1] === "総力" || colsData[2] === "X座標" || colsData[2] === "X")
+        ) {
+          continue;
+        }
+
+        const dataIndex = parsedRows.length;
+        const isAfter100 = dataIndex >= ROSTER_LIMIT;
+
+        const name = colsData[0] ?? "";
+        const powerRaw = (colsData[1] ?? "").replace(/[,，\s]/g, "");
+        const xRaw = (colsData[2] ?? "").trim();
+        const yRaw = (colsData[3] ?? "").trim();
+        const facilityRaw = colsData[4] ?? "";
+
+        const power = powerRaw !== "" && Number.isFinite(Number(powerRaw)) ? Number(powerRaw) : 0;
+        const type = parseFacilityType(facilityRaw, isAfter100);
+
+        let gx = null;
+        let gy = null;
+        if (xRaw !== "" && yRaw !== "" && Number.isFinite(Number(xRaw)) && Number.isFinite(Number(yRaw))) {
+          const gridCoord = gameToGrid(Number(xRaw), Number(yRaw));
+          gx = Math.round(gridCoord.x);
+          gy = Math.round(gridCoord.y);
+        }
+
+        parsedRows.push({ name, power, gx, gy, type, isAfter100 });
+      }
+      return parsedRows;
+    }
+
+    openImportBtn.addEventListener("click", () => {
+      if (!isEditable) return;
+      bulkInputTextarea.value = "";
+      importModal.classList.add("open");
+      bulkInputTextarea.focus();
+    });
+
+    closeImportBtn.addEventListener("click", () => {
+      importModal.classList.remove("open");
+    });
+
+    importModal.addEventListener("click", (e) => {
+      if (e.target === importModal) {
+        importModal.classList.remove("open");
+      }
+    });
+
+    applyImportBtn.addEventListener("click", () => {
+      if (!isEditable) return;
+      const rawText = bulkInputTextarea.value;
+      const rowsData = parseBulkRows(rawText);
+      if (rowsData.length === 0) {
+        statusMsg.classList.remove("ok");
+        statusMsg.textContent = "貼り付けデータが空です。";
+        importModal.classList.remove("open");
+        return;
+      }
+
+      const freshMembers = Array.from({ length: ROSTER_LIMIT }, (_, idx) => ({
+        id: idx + 1,
+        name: "",
+        power: 0,
+        type: "city",
+        x: null,
+        y: null
+      }));
+
+      const freshFacilities = [];
+      let fIdCounter = 1;
+      let memberPlaced = 0;
+      let facilityPlaced = 0;
+
+      rowsData.forEach((item, idx) => {
+        if (idx < ROSTER_LIMIT) {
+          const target = freshMembers[idx];
+          target.name = item.name;
+          target.power = item.power;
+          target.type = "city";
+
+          if (item.gx !== null && item.gy !== null) {
+            target.x = item.gx;
+            target.y = item.gy;
+            memberPlaced++;
+          } else {
+            target.x = null;
+            target.y = null;
+          }
+        } else {
+          const fType = FACILITY_TYPES[item.type]?.isExtraFacility ? item.type : "trap";
+          const fDef = FACILITY_TYPES[fType];
+          const fName = item.name || `${fDef.label}${fIdCounter}`;
+          freshFacilities.push({
+            id: fIdCounter++,
+            name: fName,
+            type: fType,
+            x: item.gx !== null && item.gy !== null ? item.gx : null,
+            y: item.gx !== null && item.gy !== null ? item.gy : null
+          });
+          if (item.gx !== null && item.gy !== null) facilityPlaced++;
+        }
+      });
+
+      members = freshMembers;
+      facilities = freshFacilities;
+      nextFacilityId = fIdCounter;
+      resortByPower();
+
+      selectedTarget = { kind: "member", id: orderedMemberIds[0] || 1 };
+      selectedEmptyGridBase = null;
+      isMoveMode = false;
+
+      const selectedEnt = getSelectedEntity();
+      if (selectedEnt) {
+        facilityTypeSelect.value = selectedEnt.type;
+        itemNameInput.value = selectedEnt.name;
+      }
+
+      importModal.classList.remove("open");
+      renderRoster();
+      syncToolbar();
+      render();
+      persistChanges();
+
+      statusMsg.classList.add("ok");
+      statusMsg.textContent = `メンバー配置${memberPlaced}件・追加施設${facilities.length}件（配置${facilityPlaced}件）を上書き反映しました。`;
+    });
+
+    resetAllBtn.addEventListener("click", () => {
+      if (!isEditable) return;
+      if (!confirm("100名リスト・追加施設・マップ配置を初期状態に戻しますか？")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      CENTER_GAME_BASE = { ...DEFAULT_CENTER_GAME_BASE };
+      updateCenterBaseBadge();
+      members = createDefaultMembers();
+      facilities = [];
+      nextFacilityId = 1;
+      resortByPower();
+      selectedTarget = { kind: "member", id: orderedMemberIds[0] || 1 };
+      selectedEmptyGridBase = null;
+      isMoveMode = false;
+      facilityTypeSelect.value = members[0].type;
+      itemNameInput.value = members[0].name;
+      statusMsg.classList.remove("ok");
+      statusMsg.textContent = "";
+      renderRoster();
+      syncToolbar();
+      render();
+      persistChanges();
+    });
+
+    splitter.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      hideCoordPopup();
+      if (currentUiMode === "mobile") {
+        if (mobileTab !== "split") return;
+        isResizingMobileSplitter = true;
+        document.body.classList.add("resizing-split-v");
+      } else {
+        isResizingSplitter = true;
+        document.body.classList.add("resizing-split");
+      }
+    });
+
+    splitter.addEventListener("touchstart", (e) => {
+      if (currentUiMode !== "mobile" || mobileTab !== "split" || e.touches.length !== 1) return;
+      e.preventDefault();
+      hideCoordPopup();
+      isResizingMobileSplitter = true;
+      document.body.classList.add("resizing-split-v");
+    }, { passive: false });
+
+    function applyMobileSplitByClientY(clientY) {
+      const layoutRect = mainLayout.getBoundingClientRect();
+      const splitterH = splitter.offsetHeight || 14;
+      const minMapH = 95;
+      const minListH = 95;
+      const maxMapH = Math.max(minMapH, layoutRect.height - minListH - splitterH);
+      const rawMapH = clientY - layoutRect.top - splitterH / 2;
+      const nextMapH = Math.min(maxMapH, Math.max(minMapH, rawMapH));
+      canvasWrap.style.height = `${Math.round(nextMapH)}px`;
+      resizeCanvas();
+    }
+
+    facilityTypeSelect.addEventListener("change", () => {
+      if (!isEditable) return;
+      const selectedEnt = getSelectedEntity();
+      const activeDef = getActiveFacilityType();
+      if (selectedEnt) {
+        if (activeDef.isExtraFacility && selectedEnt.kind === "member") {
+          selectedTarget = null;
+          itemNameInput.value = "";
+        } else if (!activeDef.isExtraFacility && selectedEnt.kind === "member") {
+          selectedEnt.type = facilityTypeSelect.value;
+          const m = members.find((item) => item.id === selectedEnt.id);
+          if (m) m.type = facilityTypeSelect.value;
+        }
+      }
+      syncToolbar();
+      updateRowSelectionClasses();
+      render();
+      persistChanges();
+    });
+
+    placeBtn.addEventListener("click", () => {
+      if (!isEditable || !selectedEmptyGridBase) return;
+      const activeDef = getActiveFacilityType();
+      const selectedEnt = getSelectedEntity();
+
+      if (activeDef.isExtraFacility && (!selectedEnt || selectedEnt.kind !== "facility")) {
+        const rawName = itemNameInput.value.trim();
+        const name = rawName || `${activeDef.label}${nextFacilityId}`;
+        const newFac = {
+          id: nextFacilityId++,
+          name,
+          type: facilityTypeSelect.value,
+          x: selectedEmptyGridBase.x,
+          y: selectedEmptyGridBase.y
+        };
+        facilities.push(newFac);
+        selectedTarget = { kind: "facility", id: newFac.id };
+        selectedEmptyGridBase = null;
+        itemNameInput.value = "";
+        renderRoster();
+        syncToolbar();
+        render();
+        persistChanges();
+        return;
+      }
+
+      if (!selectedEnt) return;
+      const rawName = itemNameInput.value.trim();
+
+      if (selectedEnt.kind === "facility") {
+        const targetF = facilities.find((f) => f.id === selectedEnt.id);
+        if (!targetF) return;
+        if (rawName) targetF.name = rawName;
+        targetF.type = activeDef.isExtraFacility ? facilityTypeSelect.value : targetF.type;
+        targetF.x = selectedEmptyGridBase.x;
+        targetF.y = selectedEmptyGridBase.y;
+        selectedEmptyGridBase = null;
+        renderRoster();
+      } else {
+        const targetM = members.find((m) => m.id === selectedEnt.id);
+        if (!targetM) return;
+        if (rawName) {
+          targetM.name = rawName;
+          syncEntityNameInput("member", targetM.id, targetM.name);
+        }
+        targetM.type = activeDef.isExtraFacility ? "city" : facilityTypeSelect.value;
+        targetM.x = selectedEmptyGridBase.x;
+        targetM.y = selectedEmptyGridBase.y;
+        selectedEmptyGridBase = null;
+        syncEntityCoordInputs("member", targetM.id, targetM.x, targetM.y);
+      }
+
+      syncToolbar();
+      updateRowSelectionClasses();
+      render();
+      persistChanges();
+    });
+
+    renameBtn.addEventListener("click", () => {
+      if (!isEditable) return;
+      const selectedEnt = getSelectedEntity();
+      if (!selectedEnt) return;
+      const rawName = itemNameInput.value.trim();
+      if (!rawName) return;
+      if (selectedEnt.kind === "facility") {
+        const targetF = facilities.find((f) => f.id === selectedEnt.id);
+        if (targetF) targetF.name = rawName;
+      } else {
+        const targetM = members.find((m) => m.id === selectedEnt.id);
+        if (targetM) targetM.name = rawName;
+      }
+      syncEntityNameInput(selectedEnt.kind, selectedEnt.id, rawName);
+      syncToolbar();
+      render();
+      persistChanges();
+    });
+
+    moveModeBtn.addEventListener("click", () => {
+      if (!isEditable) return;
+      const selectedEnt = getSelectedEntity();
+      if (!selectedEnt || selectedEnt.x === null || selectedEnt.y === null) return;
+      isMoveMode = !isMoveMode;
+      syncToolbar();
+    });
+
+    deleteBtn.addEventListener("click", () => {
+      if (!isEditable) return;
+      const selectedEnt = getSelectedEntity();
+      if (!selectedEnt) return;
+      if (selectedEnt.kind === "facility") {
+        facilities = facilities.filter((f) => f.id !== selectedEnt.id);
+        selectedTarget = null;
+        itemNameInput.value = "";
+        renderRoster();
+      } else {
+        const targetM = members.find((m) => m.id === selectedEnt.id);
+        if (targetM) {
+          targetM.x = null;
+          targetM.y = null;
+          syncEntityCoordInputs("member", targetM.id, null, null);
+        }
+      }
+      isMoveMode = false;
+      syncToolbar();
+      updateRowSelectionClasses();
+      render();
+      persistChanges();
+    });
+
+    function beginPointerAction(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = clientX - rect.left;
+      const my = clientY - rect.top;
+      const { x, y } = toGrid(mx, my);
+
+      if (isEditable) {
+        const hitEnt = !isMoveMode ? findEntityAtTile(x, y) : null;
+        if (hitEnt) {
+          draggingTarget = { kind: hitEnt.kind, id: hitEnt.id };
+          dragPreviewGridBase = { x: hitEnt.x, y: hitEnt.y };
+          dragPreviewValid = true;
+          dragPreviewReason = "";
+          dragOffsetGridX = x - hitEnt.x;
+          dragOffsetGridY = y - hitEnt.y;
+
+          selectedTarget = { kind: hitEnt.kind, id: hitEnt.id };
+          selectedEmptyGridBase = null;
+          facilityTypeSelect.value = hitEnt.type;
+          itemNameInput.value = hitEnt.name;
+
+          syncToolbar();
+          updateRowSelectionClasses();
+          render();
+          showDragPreviewPopup(hitEnt, dragPreviewGridBase, true, "", clientX, clientY);
+          return;
+        }
+      }
+
+      isPanning = true;
+      hasMovedDuringPan = false;
+      panDragStartX = clientX;
+      panDragStartY = clientY;
+      panStartX = panX;
+      panStartY = panY;
+    }
+
+    function movePointerAction(clientX, clientY) {
+      if (isEditable && draggingTarget && dragPreviewGridBase) {
+        const dragEnt = getAllMapEntities().find(
+          (ent) => ent.kind === draggingTarget.kind && ent.id === draggingTarget.id
+        );
+        if (!dragEnt) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const mx = clientX - rect.left;
+        const my = clientY - rect.top;
+        const { x, y } = toGrid(mx, my);
+
+        const nextBaseX = x - dragOffsetGridX;
+        const nextBaseY = y - dragOffsetGridY;
+        dragPreviewGridBase = { x: nextBaseX, y: nextBaseY };
+
+        const def = FACILITY_TYPES[dragEnt.type] || FACILITY_TYPES.city;
+        const check = canPlaceAt(nextBaseX, nextBaseY, def.size, draggingTarget);
+        dragPreviewValid = check.ok;
+        dragPreviewReason = check.reason;
+        render();
+        showDragPreviewPopup(dragEnt, dragPreviewGridBase, dragPreviewValid, dragPreviewReason, clientX, clientY);
+        return;
+      }
+
+      if (!isPanning) return;
+      const dx = clientX - panDragStartX;
+      const dy = clientY - panDragStartY;
+      if (Math.hypot(dx, dy) > 5) hasMovedDuringPan = true;
+      if (hasMovedDuringPan) {
+        panX = panStartX + dx;
+        panY = panStartY + dy;
+        render();
+      }
+    }
+
+    function endPointerAction(clientX, clientY, isOnCanvas, isTouchTap = false) {
+      if (isEditable && draggingTarget) {
+        const targetInfo = draggingTarget;
+        const preview = dragPreviewGridBase;
+        const isValid = dragPreviewValid;
+
+        draggingTarget = null;
+        dragPreviewGridBase = null;
+        dragPreviewValid = true;
+        dragPreviewReason = "";
+
+        if (preview && isValid) {
+          if (targetInfo.kind === "facility") {
+            const f = facilities.find((item) => item.id === targetInfo.id);
+            if (f) {
+              f.x = preview.x;
+              f.y = preview.y;
+              syncEntityCoordInputs("facility", f.id, f.x, f.y);
+            }
+          } else {
+            const m = members.find((item) => item.id === targetInfo.id);
+            if (m) {
+              m.x = preview.x;
+              m.y = preview.y;
+              syncEntityCoordInputs("member", m.id, m.x, m.y);
+            }
+          }
+          persistChanges();
+        }
+        hideCoordPopup();
+        syncToolbar();
+        updateRowSelectionClasses();
+        render();
+        return;
+      }
+
+      if (!isPanning) return;
+      const wasPan = hasMovedDuringPan;
+      isPanning = false;
+      hasMovedDuringPan = false;
+
+      if (wasPan || !isOnCanvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const mx = clientX - rect.left;
+      const my = clientY - rect.top;
+      const { x, y } = toGrid(mx, my);
+
+      if (isTouchTap || currentUiMode === "mobile") {
+        showTapPopup(x, y);
+      }
+
+      if (x < 0 || x >= cols || y < 0 || y >= rows) {
+        selectedEmptyGridBase = null;
+        selectedTarget = null;
+        isMoveMode = false;
+        syncToolbar();
+        updateRowSelectionClasses();
+        render();
+        return;
+      }
+
+      const selectedEnt = getSelectedEntity();
+      if (isEditable && isMoveMode && selectedEnt) {
+        const def = FACILITY_TYPES[selectedEnt.type] || FACILITY_TYPES.city;
+        const check = canPlaceAt(x, y, def.size, selectedTarget);
+        if (check.ok) {
+          if (selectedEnt.kind === "facility") {
+            const f = facilities.find((item) => item.id === selectedEnt.id);
+            if (f) {
+              f.x = x;
+              f.y = y;
+              syncEntityCoordInputs("facility", f.id, f.x, f.y);
+            }
+          } else {
+            const m = members.find((item) => item.id === selectedEnt.id);
+            if (m) {
+              m.x = x;
+              m.y = y;
+              syncEntityCoordInputs("member", m.id, m.x, m.y);
+            }
+          }
+          isMoveMode = false;
+          persistChanges();
+        }
+        syncToolbar();
+        updateRowSelectionClasses();
+        render();
+        return;
+      }
+
+      const hitEnt = findEntityAtTile(x, y);
+      if (hitEnt) {
+        selectedTarget = { kind: hitEnt.kind, id: hitEnt.id };
+        selectedEmptyGridBase = null;
+        isMoveMode = false;
+        facilityTypeSelect.value = hitEnt.type;
+        itemNameInput.value = hitEnt.name;
+      } else {
+        selectedTarget = null;
+        selectedEmptyGridBase = { x, y };
+        isMoveMode = false;
+      }
+
+      syncToolbar();
+      updateRowSelectionClasses();
+      render();
+    }
+
+    canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      hideCoordPopup();
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      const oldZoom = zoom;
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      const nextZoom = Math.min(maxZoom, Math.max(minZoom, oldZoom * factor));
+      if (nextZoom === oldZoom) return;
+
+      const currentOrigin = getOrigin();
+      const scaleRatio = nextZoom / oldZoom;
+      panX = mx - baseOriginX - (mx - currentOrigin.ox) * scaleRatio;
+      panY = my - baseOriginY - (my - currentOrigin.oy) * scaleRatio;
+      zoom = nextZoom;
+
+      zoomInfo.textContent = `倍率：${Math.round(zoom * 100)}%`;
+      render();
+    }, { passive: false });
+
+    canvas.addEventListener("mousedown", (e) => {
+      if (e.button !== 0 || isResizingSplitter || isResizingMobileSplitter) return;
+      hideCoordPopup();
+      beginPointerAction(e.clientX, e.clientY);
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+      if (currentUiMode !== "mobile" && !isResizingSplitter && !draggingTarget) {
+        schedulePcHoverPopup(e.clientX, e.clientY);
+      }
+    });
+
+    canvas.addEventListener("mouseleave", () => {
+      if (currentUiMode !== "mobile" && !draggingTarget) {
+        hideCoordPopup();
+      }
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (isResizingMobileSplitter) {
+        applyMobileSplitByClientY(e.clientY);
+        return;
+      }
+      if (isResizingSplitter) {
+        const layoutRect = mainLayout.getBoundingClientRect();
+        const minPanelW = 330;
+        const maxPanelW = Math.max(minPanelW, layoutRect.width - 230);
+        const rawPanelW = layoutRect.right - e.clientX;
+        const nextPanelW = Math.min(maxPanelW, Math.max(minPanelW, rawPanelW));
+        rosterPanel.style.width = `${Math.round(nextPanelW)}px`;
+        resizeCanvas();
+        return;
+      }
+      movePointerAction(e.clientX, e.clientY);
+    });
+
+    window.addEventListener("mouseup", (e) => {
+      if (isResizingMobileSplitter) {
+        isResizingMobileSplitter = false;
+        document.body.classList.remove("resizing-split-v");
+        resizeCanvas();
+        saveToLocalStorageOnly();
+        return;
+      }
+      if (isResizingSplitter) {
+        isResizingSplitter = false;
+        document.body.classList.remove("resizing-split");
+        resizeCanvas();
+        saveToLocalStorageOnly();
+        return;
+      }
+      endPointerAction(e.clientX, e.clientY, e.target === canvas, false);
+    });
+
+    canvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      if (e.touches.length === 2) {
+        isPinching = true;
+        isPanning = false;
+        draggingTarget = null;
+        hideCoordPopup();
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        pinchStartDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        pinchStartZoom = zoom;
+        return;
+      }
+      if (e.touches.length === 1 && !isPinching) {
+        const t = e.touches[0];
+        beginPointerAction(t.clientX, t.clientY);
+      }
+    }, { passive: false });
+
+    canvas.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      if (isPinching && e.touches.length === 2) {
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        if (pinchStartDist > 0) {
+          const nextZoom = Math.min(maxZoom, Math.max(minZoom, pinchStartZoom * (dist / pinchStartDist)));
+          const rect = canvas.getBoundingClientRect();
+          const midX = (t0.clientX + t1.clientX) / 2 - rect.left;
+          const midY = (t0.clientY + t1.clientY) / 2 - rect.top;
+          const currentOrigin = getOrigin();
+          const scaleRatio = nextZoom / zoom;
+          panX = midX - baseOriginX - (midX - currentOrigin.ox) * scaleRatio;
+          panY = midY - baseOriginY - (midY - currentOrigin.oy) * scaleRatio;
+          zoom = nextZoom;
+          zoomInfo.textContent = `倍率：${Math.round(zoom * 100)}%`;
+          render();
+        }
+        return;
+      }
+      if (e.touches.length === 1 && !isPinching) {
+        const t = e.touches[0];
+        movePointerAction(t.clientX, t.clientY);
+      }
+    }, { passive: false });
+
+    window.addEventListener("touchmove", (e) => {
+      if (!isResizingMobileSplitter || e.touches.length !== 1) return;
+      e.preventDefault();
+      applyMobileSplitByClientY(e.touches[0].clientY);
+    }, { passive: false });
+
+    canvas.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      if (isPinching) {
+        if (e.touches.length < 2) {
+          isPinching = false;
+        }
+        return;
+      }
+      const changed = e.changedTouches[0];
+      if (changed) {
+        endPointerAction(changed.clientX, changed.clientY, true, true);
+      }
+    }, { passive: false });
+
+    window.addEventListener("touchend", () => {
+      if (isResizingMobileSplitter) {
+        isResizingMobileSplitter = false;
+        document.body.classList.remove("resizing-split-v");
+        resizeCanvas();
+        saveToLocalStorageOnly();
+      }
+    }, { passive: false });
+
+    resetBtn.addEventListener("click", () => {
+      zoom = 1.0;
+      panX = 0;
+      panY = 0;
+      zoomInfo.textContent = "倍率：100%";
+      render();
+    });
+
+    window.addEventListener("resize", resizeCanvas);
+
+    if (!loadFromStorage()) {
+      resortByPower();
+    }
+
+    syncSettingsModalInputs();
+    updateCenterBaseBadge();
+    applyUiMode(detectInitialUiMode(), false);
+    renderRoster();
+    applyEditModeState(false, false);
+    initFirebaseCloud();
+    resizeCanvas();
+  </script>
+</body>
+</html>
