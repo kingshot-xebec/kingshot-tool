@@ -270,6 +270,36 @@
     }
   }
 
+  function registerPwaServiceWorker() {
+    if (!global.navigator || !("serviceWorker" in global.navigator)) return;
+    const proto = global.location && global.location.protocol;
+    const host = global.location && global.location.hostname;
+    const isSecure = proto === "https:" || host === "localhost" || host === "127.0.0.1";
+    if (!isSecure) return;
+
+    let swUrl = "./sw.js";
+    try {
+      const current = global.document && global.document.currentScript;
+      if (current && current.src) {
+        swUrl = new URL("../sw.js", current.src).href;
+      } else {
+        const scripts = global.document ? Array.from(global.document.scripts || []) : [];
+        const matched = scripts.find((s) => s.src && s.src.includes("assets/firebase-init.js"));
+        if (matched) {
+          swUrl = new URL("../sw.js", matched.src).href;
+        }
+      }
+    } catch (_) {}
+
+    global.addEventListener("load", function () {
+      global.navigator.serviceWorker.register(swUrl).catch(function (err) {
+        console.warn("[RBNSuite] Service Worker 登録スキップ:", err);
+      });
+    });
+  }
+
+  registerPwaServiceWorker();
+
   global.RBNSuite = Object.freeze({
     SHARED_SETTINGS_KEY,
     FIREBASE_CONFIG,

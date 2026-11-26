@@ -3,7 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RBN Kingshot ツールポータル</title>
+  <title>ks tool｜RBN Kingshot ツールポータル</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ks tool" />
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
   <link rel="stylesheet" href="./assets/common.css" />
   <script src="./assets/firebase-init.js"></script>
   <style>
@@ -64,6 +72,37 @@
       margin-top: 4px;
       font-size: 0.85rem;
       color: var(--rbn-muted);
+    }
+
+    .portal-header-right {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .install-btn {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #0284c7;
+      border: 1px solid #38bdf8;
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 0.15s ease;
+    }
+
+    .install-btn:hover {
+      background: #0369a1;
+    }
+
+    .install-btn.visible {
+      display: inline-flex;
     }
 
     .portal-badge {
@@ -231,7 +270,10 @@
         <h1 class="portal-title">🏰 RBN Kingshot ツールポータル</h1>
         <p class="portal-subtitle">都市マップ管理・熊編成ナビ・同盟通知ジェネレーターの統合メニュー</p>
       </div>
-      <span id="portalFirebaseBadge" class="portal-badge">☁️ Firebase 共通設定連携</span>
+      <div class="portal-header-right">
+        <button id="pwaInstallBtn" type="button" class="install-btn">📲 アプリをインストール</button>
+        <span id="portalFirebaseBadge" class="portal-badge">☁️ Firebase 共通設定連携</span>
+      </div>
     </header>
 
     <nav class="tool-grid" aria-label="ツール選択メニュー">
@@ -309,6 +351,30 @@
           dbHostEl.textContent = settings.firebase.databaseUrl;
         }
       }
+
+      // PWA インストールプロンプト制御（対応ブラウザのみボタン表示）
+      let deferredInstallPrompt = null;
+      const installBtn = document.getElementById("pwaInstallBtn");
+      window.addEventListener("beforeinstallprompt", function (e) {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        if (installBtn) installBtn.classList.add("visible");
+      });
+      if (installBtn) {
+        installBtn.addEventListener("click", async function () {
+          if (!deferredInstallPrompt) return;
+          deferredInstallPrompt.prompt();
+          try {
+            await deferredInstallPrompt.userChoice;
+          } catch (_) {}
+          deferredInstallPrompt = null;
+          installBtn.classList.remove("visible");
+        });
+      }
+      window.addEventListener("appinstalled", function () {
+        deferredInstallPrompt = null;
+        if (installBtn) installBtn.classList.remove("visible");
+      });
     })();
   </script>
 </body>
