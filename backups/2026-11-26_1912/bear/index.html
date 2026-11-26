@@ -1,0 +1,2803 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RBN 熊編成ナビ（巨熊狩猟 S1〜S8完全対応）</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ks bear" />
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png" />
+  <!-- Firebase SDK (Compat v10) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="../assets/firebase-init.js"></script>
+  <link rel="stylesheet" href="../assets/common.css" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #182032;
+      --card: #1e293b;
+      --card-sub: #263349;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-hover: #d97706;
+      --blue: #38bdf8;
+      --blue-strong: #0284c7;
+      --green: #10b981;
+      --red: #ef4444;
+      --purple: #a855f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 14px 16px;
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, var(--card) 0%, var(--bg) 100%);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 14px;
+    }
+    h1 {
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent);
+    }
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      align-items: center;
+    }
+    .badge-sync {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #6ee7b7;
+      font-weight: 600;
+    }
+    .badge-sync.offline {
+      background: rgba(148, 163, 184, 0.15);
+      border-color: rgba(148, 163, 184, 0.4);
+      color: #cbd5e1;
+    }
+    button {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--card-sub);
+      color: var(--text);
+    }
+    button:hover { background: #334155; border-color: #64748b; }
+    .btn-primary { background: var(--blue-strong); border-color: var(--blue); color: #fff; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-accent { background: var(--accent); border-color: #fbbf24; color: #0f172a; }
+    .btn-accent:hover { background: var(--accent-hover); }
+    .btn-secondary { background: var(--card-sub); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #334155; }
+    .btn-blue { background: rgba(56, 189, 248, 0.15); color: var(--blue); border: 1px solid rgba(56, 189, 248, 0.4); }
+    .btn-blue:hover { background: rgba(56, 189, 248, 0.25); }
+    .btn-green { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.45); }
+    .btn-green:hover { background: rgba(16, 185, 129, 0.28); }
+    .btn-purple { background: rgba(168, 85, 247, 0.18); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.45); }
+    .btn-purple:hover { background: rgba(168, 85, 247, 0.28); }
+    .btn-danger { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--blue);
+    }
+    .step-badge {
+      background: var(--blue-strong);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-right: 6px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .cap-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .cap-box {
+      background: var(--card-sub);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .cap-box.rally-cap {
+      border-color: rgba(245, 158, 11, 0.55);
+      background: rgba(245, 158, 11, 0.08);
+    }
+    .cap-box.inactive-cap {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+    .cap-box label {
+      display: block;
+      font-size: 0.76rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .cap-box.rally-cap label {
+      color: var(--accent);
+    }
+    .cap-box input {
+      padding: 6px 8px;
+      font-size: 0.88rem;
+    }
+
+    label.field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+    input[type="number"], input[type="text"], input[type="password"], select, textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 11px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      width: 100%;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .radio-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: var(--card-sub);
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .radio-item input { margin-top: 4px; }
+    .radio-item strong { display: block; font-size: 0.9rem; color: var(--text); }
+    .radio-item span { font-size: 0.8rem; color: var(--muted); }
+
+    .rules-box {
+      background: rgba(245, 158, 11, 0.08);
+      border-left: 3px solid var(--accent);
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.83rem;
+      margin-top: 12px;
+      color: #fde68a;
+    }
+    .rules-box ul { padding-left: 18px; }
+    .rules-box li { margin-bottom: 3px; }
+
+    .guide-box {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      font-size: 0.82rem;
+    }
+    .guide-box strong { color: var(--blue); display: block; margin-bottom: 6px; font-size: 0.88rem; }
+    .guide-box ol { padding-left: 18px; color: #e2e8f0; }
+    .guide-box li { margin-bottom: 4px; }
+
+    .warning-box {
+      background: rgba(239, 68, 68, 0.14);
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #fecaca;
+      padding: 12px 14px;
+      border-radius: 8px;
+      margin-top: 12px;
+      font-size: 0.86rem;
+      display: none;
+    }
+    .warning-box.active { display: block; }
+
+    .buff-priority-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+    .buff-toggle-group {
+      display: inline-flex;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--card);
+    }
+    .buff-toggle-btn {
+      border: none;
+      border-radius: 0;
+      padding: 6px 12px;
+      font-size: 0.82rem;
+      background: transparent;
+      color: var(--muted);
+    }
+    .buff-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+    }
+    .buff-toggle-btn.active-leth {
+      background: rgba(245, 158, 11, 0.24);
+      color: #fde68a;
+      font-weight: 700;
+    }
+    .buff-toggle-btn.active-atk {
+      background: rgba(56, 189, 248, 0.24);
+      color: #7dd3fc;
+      font-weight: 700;
+    }
+
+    .hero-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .hero-card {
+      background: var(--card-sub);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .hero-card.disabled { opacity: 0.55; }
+    .hero-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+    .hero-left input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .tier-tag {
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .tier-S { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.5); }
+    .tier-A { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.5); }
+    .hero-meta { min-width: 0; }
+    .hero-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hero-skill { font-size: 0.75rem; color: var(--muted); }
+    .hero-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .hero-right select {
+      width: 68px;
+      padding: 4px 6px;
+      font-size: 0.8rem;
+    }
+    .icon-btn {
+      padding: 5px 7px;
+      font-size: 0.78rem;
+      background: var(--card);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .icon-btn:hover { color: var(--text); border-color: var(--blue); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.88rem;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: middle;
+    }
+    th {
+      background: var(--bg);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+    .squad-rally { background: rgba(245, 158, 11, 0.06); }
+    .dup-badge {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 0.72rem;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: rgba(245, 158, 11, 0.18);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fcd34d;
+    }
+    .ratio-bar {
+      display: flex;
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 4px;
+      background: var(--bg);
+    }
+    .r-inf { background: #3b82f6; }
+    .r-cav { background: #10b981; }
+    .r-arc { background: #f59e0b; }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.78);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 1000;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-width: 720px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-body { font-size: 0.88rem; }
+    .modal-body h4 { color: var(--accent); margin: 12px 0 6px; font-size: 0.94rem; }
+    .modal-body p, .modal-body li { color: #cbd5e1; margin-bottom: 5px; }
+    .modal-body ul { padding-left: 18px; }
+
+    .settings-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .settings-box-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--blue);
+      margin-bottom: 8px;
+    }
+    .link-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .open-link-btn {
+      background: var(--card-sub);
+      color: #e2e8f0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 0.8rem;
+      text-decoration: none;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+    .open-link-btn:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--green);
+      color: #0f172a;
+      font-weight: 700;
+      padding: 10px 16px;
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: 0.25s;
+      pointer-events: none;
+      z-index: 2000;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* View Mode Toggle (PC / Mobile / Auto) */
+    .view-switch-group {
+      display: inline-flex;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .view-switch-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 5px 9px;
+      font-size: 0.76rem;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .view-switch-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .view-switch-btn.active {
+      background: var(--blue-strong);
+      color: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    }
+
+    body.force-pc {
+      max-width: 1120px;
+      min-width: 960px;
+    }
+
+    body.view-mobile {
+      max-width: 540px;
+      padding: 10px 10px 76px;
+    }
+    body.view-mobile header {
+      padding: 12px;
+      gap: 10px;
+    }
+    body.view-mobile h1 {
+      font-size: 1.08rem;
+    }
+    body.view-mobile .header-actions {
+      width: 100%;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    body.view-mobile .header-actions button {
+      padding: 7px 9px;
+      font-size: 0.78rem;
+      flex: 1 1 auto;
+      justify-content: center;
+    }
+    body.view-mobile .card {
+      padding: 13px 12px;
+      margin-bottom: 12px;
+    }
+    body.view-mobile .card-title {
+      font-size: 0.95rem;
+      margin-bottom: 10px;
+    }
+    body.view-mobile .grid-3,
+    body.view-mobile .grid-2 {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    body.view-mobile .troop-input-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    body.view-mobile .troop-input-grid label.field {
+      font-size: 0.75rem;
+    }
+    body.view-mobile .troop-input-grid input {
+      padding: 9px 6px;
+      font-size: 0.88rem;
+      text-align: center;
+      font-weight: 700;
+    }
+    body.view-mobile .cap-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    body.view-mobile .cap-box.rally-cap {
+      grid-column: 1 / -1;
+    }
+    body.view-mobile .cap-box input {
+      padding: 9px 10px;
+      font-size: 0.95rem;
+    }
+    body.view-mobile input[type="number"],
+    body.view-mobile input[type="text"],
+    body.view-mobile select {
+      min-height: 42px;
+      font-size: 0.95rem;
+    }
+    body.view-mobile .buff-priority-bar {
+      padding: 8px;
+    }
+    body.view-mobile .buff-toggle-group {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    body.view-mobile .buff-toggle-btn {
+      padding: 9px 6px;
+      font-size: 0.78rem;
+      justify-content: center;
+      text-align: center;
+    }
+    body.view-mobile .hero-list {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    body.view-mobile .hero-card {
+      padding: 11px 10px;
+    }
+    body.view-mobile .hero-left input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+    }
+    body.view-mobile .hero-right select {
+      width: 74px;
+      min-height: 36px;
+      font-size: 0.85rem;
+    }
+    body.view-mobile .icon-btn {
+      min-height: 36px;
+      min-width: 36px;
+      justify-content: center;
+    }
+    .mobile-result-cards {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    body.view-mobile .desktop-result-table {
+      display: none;
+    }
+    body.view-mobile .mobile-result-cards {
+      display: flex;
+    }
+    .m-squad-card {
+      background: var(--card-sub);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .m-squad-card.rally {
+      border-color: rgba(245, 158, 11, 0.55);
+      background: linear-gradient(180deg, rgba(245, 158, 11, 0.12) 0%, var(--card-sub) 100%);
+    }
+    .m-squad-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .m-squad-title {
+      font-weight: 800;
+      font-size: 0.94rem;
+    }
+    .m-squad-cap {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .m-squad-hero {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--blue);
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .m-squad-card.rally .m-squad-hero {
+      color: #fde68a;
+    }
+    .m-troop-pills {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .m-pill {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 4px;
+      text-align: center;
+    }
+    .m-pill-lbl {
+      font-size: 0.7rem;
+      color: var(--muted);
+      display: block;
+    }
+    .m-pill-val {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .m-pill-pct {
+      font-size: 0.68rem;
+      color: var(--muted);
+      display: block;
+    }
+
+    .mobile-sticky-bar {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid var(--border);
+      padding: 10px 14px;
+      z-index: 900;
+      justify-content: center;
+      gap: 10px;
+    }
+    body.view-mobile .mobile-sticky-bar {
+      display: flex;
+    }
+    body.view-mobile .toast {
+      bottom: 72px;
+      right: 12px;
+      left: 12px;
+      text-align: center;
+    }
+
+    /* マスター確認・補正ページ（モーダル）用スタイル */
+    .inspect-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .inspect-tab-btn {
+      background: var(--bg);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+    }
+    .inspect-tab-btn.active {
+      background: var(--blue-strong);
+      color: #fff;
+      border-color: var(--blue);
+    }
+    .pool-columns {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    body.view-mobile .pool-columns {
+      grid-template-columns: 1fr;
+    }
+    .pool-col {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .pool-col-title {
+      font-weight: 800;
+      font-size: 0.88rem;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .pool-item-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 5px 6px;
+      border-radius: 6px;
+      background: var(--card-sub);
+      margin-bottom: 5px;
+      font-size: 0.8rem;
+    }
+    .pool-item-name {
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .pool-item-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .pool-item-actions select {
+      width: 66px;
+      padding: 2px 4px;
+      font-size: 0.75rem;
+      min-height: 26px !important;
+    }
+    .mini-del-btn {
+      padding: 2px 6px;
+      font-size: 0.72rem;
+      background: rgba(239, 68, 68, 0.18);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    .inspect-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .inspect-table th, .inspect-table td {
+      padding: 7px 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .inspect-table select, .inspect-table input {
+      padding: 3px 6px;
+      font-size: 0.78rem;
+      min-height: 28px !important;
+    }
+
+    @media (max-width: 640px) {
+      th, td { padding: 8px 6px; font-size: 0.8rem; }
+      .hero-list { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="rbn-topbar">
+    <nav class="rbn-quick-nav" aria-label="ツール切替">
+      <a class="rbn-top-link" href="../" title="トップメニューへ戻る">🏠 トップ</a>
+      <a id="headerMapLink" class="rbn-top-link" href="../map/" title="RBN 都市マップを開く">🗺️ マップ</a>
+      <a id="headerNoticeLink" class="rbn-top-link" href="../notice/" title="RBN 同盟通知ジェネレーターを開く">📢 通知作成</a>
+    </nav>
+    <div class="rbn-topbar-controls">
+      <div class="rbn-view-toggle" role="group" aria-label="表示モード切替">
+        <button type="button" id="btnViewMobile" class="rbn-view-toggle-btn" onclick="setViewMode('mobile')" title="スマホ向け縦カード表示">📱 スマホ</button>
+        <button type="button" id="btnViewPc" class="rbn-view-toggle-btn" onclick="setViewMode('pc')" title="PC向けワイド表表示">💻 PC</button>
+      </div>
+      <button type="button" class="rbn-settings-pill" onclick="openAppSettingsModal()">⚙️ 設定</button>
+    </div>
+  </div>
+  <div>
+    <h1>🐻 RBN 熊編成ナビ</h1>
+    <div style="font-size: 0.75rem; color: var(--muted); margin-top: 2px;">
+      <span id="masterVersionLabel">S1〜S8完全対応</span>・10ターン期待値＆スキル干渉自動判定モデル
+    </div>
+  </div>
+  <div class="header-actions">
+    <span id="syncStatus" class="badge-sync offline">⚪ ローカル読込</span>
+    <button class="btn-blue" onclick="openTierModal()">🏆 環境Tier表</button>
+    <button class="btn-purple" onclick="openInspectModal()">📋 マスター確認・補正</button>
+    <button class="btn-green" onclick="openDataModal()">📦 マスタ管理</button>
+    <button class="btn-secondary" onclick="resetLocalUser()">🔄 初期化</button>
+  </div>
+</header>
+
+<!-- STEP 1 -->
+<section class="card">
+  <div class="card-title">
+    <span><span class="step-badge">STEP 1</span>所持兵士数（総兵力）の入力</span>
+  </div>
+  <div class="grid-3 troop-input-grid">
+    <label class="field">
+      🛡️ 歩兵（総数）
+      <input type="number" id="infTotal" min="0" step="1000" value="150000" oninput="recalc()" />
+    </label>
+    <label class="field">
+      🐎 騎兵（総数）
+      <input type="number" id="cavTotal" min="0" step="1000" value="180000" oninput="recalc()" />
+    </label>
+    <label class="field">
+      🏹 弓兵（総数）
+      <input type="number" id="arcTotal" min="0" step="1000" value="450000" oninput="recalc()" />
+    </label>
+  </div>
+</section>
+
+<!-- STEP 2 & 3 -->
+<div class="grid-2">
+  <section class="card">
+    <div class="card-title">
+      <span><span class="step-badge">STEP 2</span>出撃枠・部隊別出撃定員（最大7部隊）</span>
+      <button class="btn-secondary" style="font-size:0.75rem; padding:4px 9px;" onclick="syncJoinCaps()">乗り1軍の値を他に反映</button>
+    </div>
+    <div class="grid-3">
+      <label class="field">
+        総出撃部隊数（自集結＋乗り）
+        <select id="squadCount" onchange="updateCapBoxes(); recalc();">
+          <option value="4">4部隊（自集結1＋乗り3）</option>
+          <option value="5">5部隊（自集結1＋乗り4）</option>
+          <option value="6">6部隊（自集結1＋乗り5）</option>
+          <option value="7" selected>7部隊（自集結1＋乗り6）</option>
+        </select>
+      </label>
+      <label class="field">
+        全兵種の最低確保人数（推奨 5,000）
+        <input type="number" id="minTroop" min="0" step="1000" value="5000" oninput="recalc()" />
+      </label>
+      <label class="field">
+        🏹 1部隊の弓兵上限（% / 既定 90%）
+        <input type="number" id="maxArcPct" min="0" max="100" step="5" value="90" oninput="recalc()" />
+      </label>
+    </div>
+
+    <div class="cap-grid">
+      <div class="cap-box rally-cap" id="capBox0">
+        <label>🔥 自集結 定員</label>
+        <input type="number" id="cap0" min="1000" step="1000" value="140000" oninput="recalc()" />
+      </div>
+      <div class="cap-box" id="capBox1">
+        <label>⚔️ 乗り 1軍 定員</label>
+        <input type="number" id="cap1" min="1000" step="1000" value="125000" oninput="recalc()" />
+      </div>
+      <div class="cap-box" id="capBox2">
+        <label>⚔️ 乗り 2軍 定員</label>
+        <input type="number" id="cap2" min="1000" step="1000" value="125000" oninput="recalc()" />
+      </div>
+      <div class="cap-box" id="capBox3">
+        <label>⚔️ 乗り 3軍 定員</label>
+        <input type="number" id="cap3" min="1000" step="1000" value="125000" oninput="recalc()" />
+      </div>
+      <div class="cap-box" id="capBox4">
+        <label>⚔️ 乗り 4軍 定員</label>
+        <input type="number" id="cap4" min="1000" step="1000" value="125000" oninput="recalc()" />
+      </div>
+      <div class="cap-box" id="capBox5">
+        <label>⚔️ 乗り 5軍 定員</label>
+        <input type="number" id="cap5" min="1000" step="1000" value="125000" oninput="recalc()" />
+      </div>
+      <div class="cap-box" id="capBox6">
+        <label>⚔️ 乗り 6軍 定員</label>
+        <input type="number" id="cap6" min="1000" step="1000" value="125000" oninput="recalc()" />
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-title">
+      <span><span class="step-badge">STEP 3</span>同盟内の立ち位置（兵力傾斜）</span>
+    </div>
+    <div class="radio-group">
+      <label class="radio-item">
+        <input type="radio" name="stance" value="top" onchange="recalc()" />
+        <div>
+          <strong>① 同盟内トップ層（自集結の火力最優先）</strong>
+          <span>自集結に弓兵80%を集中し、残りを1〜6軍へ傾斜配分</span>
+        </div>
+      </label>
+      <label class="radio-item">
+        <input type="radio" name="stance" value="mid" checked onchange="recalc()" />
+        <div>
+          <strong>② バランス型（自身より強い人にも乗る）</strong>
+          <span>自集結は弓60%に抑え、強者乗りの1〜3軍へ弓77〜87%を厚く配分</span>
+        </div>
+      </label>
+      <label class="radio-item">
+        <input type="radio" name="stance" value="support" onchange="recalc()" />
+        <div>
+          <strong>③ 乗り特化型（強者の集結へ全力供給）</strong>
+          <span>自集結は最低限（弓35%）にし、トップ層乗りの1〜4軍へ弓兵を集中</span>
+        </div>
+      </label>
+    </div>
+  </section>
+</div>
+
+<!-- STEP 4 -->
+<section class="card">
+  <div class="card-title">
+    <span><span class="step-badge">STEP 4</span>自集結（集結主）の英雄選択</span>
+  </div>
+  <div class="grid-3">
+    <label class="field">
+      🛡️ 歩兵（集結主）
+      <select id="rallyInf" onchange="recalc()"></select>
+    </label>
+    <label class="field">
+      🐎 騎兵（集結主）
+      <select id="rallyCav" onchange="recalc()"></select>
+    </label>
+    <label class="field">
+      🏹 弓兵（集結主）
+      <select id="rallyArc" onchange="recalc()"></select>
+    </label>
+  </div>
+
+  <div id="interferenceWarn" class="warning-box">
+    <strong>⚠️ スキル干渉警告（ペーラ × ゾーイ）：</strong><br />
+    騎兵に「ペーラ(S3)」、歩兵に「ゾーイ(S2)」を同時編成すると、ゾーイ第3スキルのデバフ枠がペーラの火力バフと干渉して期待値が低下します。歩兵枠は<strong>「アルカ(S4)」</strong>または<strong>「ディエゴ(S8) / ヘルガ / アマデウス」</strong>への変更を推奨します。
+  </div>
+
+  <div class="rules-box">
+    <strong>📌 守るべき3行の鉄則：</strong>
+    <ul>
+      <li><strong>1. 乗り手（1〜6軍）は「左端（1人目）」の第1遠征スキルのみ発動：</strong> 2人目・3人目は兵力上限を広げるだけの枠（スキル効果なし）です。</li>
+      <li><strong>2. 状態異常（気絶・裂傷・恐怖）は巨熊に無効：</strong> ゾーイ等は集結主専用であり、乗り手の左端には絶対に入れないでください。</li>
+      <li><strong>3. 重複不可スキル（ペーラ・リズ・ビビアン）は集結内に1人まで：</strong> 集結主と乗り手で重複すると片方が無効化されます。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- STEP 5 -->
+<section class="card">
+  <div class="card-title">
+    <span><span class="step-badge">STEP 5</span>乗り手候補（所持英雄・第1遠征スキルLv設定）</span>
+    <button class="btn-secondary" style="font-size: 0.78rem; padding: 5px 10px;" onclick="openHeroEditor(null)">＋ 新規英雄を追加</button>
+  </div>
+
+  <div class="buff-priority-bar">
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <span style="font-size:0.84rem; font-weight:700; color:#e2e8f0;">バフ優先切替：</span>
+      <div class="buff-toggle-group" role="group" aria-label="バフ優先切替">
+        <button type="button" id="btnPriorityLeth" class="buff-toggle-btn active-leth" onclick="setBuffPriority('leth')">💥 殺傷力UP優先（チェンコ等）</button>
+        <button type="button" id="btnPriorityAtk" class="buff-toggle-btn" onclick="setBuffPriority('atk')">⚔️ 攻撃力UP優先（あまね・マーゴ等）</button>
+      </div>
+    </div>
+    <span style="font-size: 0.76rem; color: var(--muted);">※チェックONの英雄から期待値順に1〜6軍の左端へ自動配置</span>
+  </div>
+
+  <div id="heroGrid" class="hero-list"></div>
+</section>
+
+<!-- RESULT -->
+<section class="card">
+  <div class="card-title">
+    <span>📊 巨熊狩猟 最適部隊編成表（計算結果）</span>
+    <button class="btn-accent" onclick="copyFormation()">📋 編成表をテキストコピー</button>
+  </div>
+  <div class="desktop-result-table" style="overflow-x: auto;">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 115px;">部隊区分</th>
+          <th>配置英雄（左端がスキル発動）</th>
+          <th>🛡️ 歩兵</th>
+          <th>🐎 騎兵</th>
+          <th>🏹 弓兵</th>
+          <th>合計 / 定員（比率）</th>
+        </tr>
+      </thead>
+      <tbody id="resultBody"></tbody>
+    </table>
+  </div>
+  <div id="mobileResultCards" class="mobile-result-cards"></div>
+</section>
+
+<!-- 共通設定モーダル（リンク設定・Firebase・AI Studio API・共通JSON） -->
+<div id="appSettingsModal" class="modal-backdrop" onclick="if(event.target===this) closeModal('appSettingsModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 style="color: var(--accent);">⚙️ 共通設定・リンク設定</h3>
+      <button class="btn-secondary" onclick="closeModal('appSettingsModal')">閉じる</button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-box">
+        <div class="settings-box-title">🔗 外部リンク設定（3アプリ共通）</div>
+        <label class="field" style="margin-bottom: 8px;">
+          🗺️ 都市マップ URL
+          <div class="link-row">
+            <input type="text" id="setLinkMap" placeholder="../map/" />
+            <a id="openLinkMap" class="open-link-btn" href="../map/" target="_blank" rel="noopener noreferrer">開く ↗</a>
+          </div>
+        </label>
+        <label class="field" style="margin-bottom: 8px;">
+          🐻 熊編成ナビ URL
+          <div class="link-row">
+            <input type="text" id="setLinkBear" placeholder="../bear/" />
+            <a id="openLinkBear" class="open-link-btn" href="../bear/" target="_blank" rel="noopener noreferrer">開く ↗</a>
+          </div>
+        </label>
+        <label class="field">
+          📣 同盟通知ジェネレーター URL
+          <div class="link-row">
+            <input type="text" id="setLinkNotice" placeholder="../notice/" />
+            <a id="openLinkNotice" class="open-link-btn" href="../notice/" target="_blank" rel="noopener noreferrer">開く ↗</a>
+          </div>
+        </label>
+      </div>
+
+      <div class="settings-box">
+        <div class="settings-box-title">☁️ Firebase / AI Studio API 共通設定</div>
+        <label class="field" style="margin-bottom: 8px;">
+          Firebase Realtime Database URL（熊編成ナビは現行 <code>bear_master</code> ノードを維持）
+          <input type="text" id="setFirebaseUrl" placeholder="https://...firebaseio.com" />
+        </label>
+        <label class="field">
+          AI Studio API キー（共通保持）
+          <input type="password" id="setAiStudioKey" placeholder="AIzaSy..." />
+        </label>
+      </div>
+
+      <div class="settings-box">
+        <div class="settings-box-title">📋 共通設定JSON（一括コピー・反映）</div>
+        <textarea id="setSharedJson" rows="6" style="font-family: monospace; font-size: 0.8rem;"></textarea>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <button type="button" class="btn-blue" onclick="copySharedSettingsJson()">共通JSONをコピー</button>
+          <button type="button" class="btn-secondary" onclick="applySharedSettingsJson()">貼り付けJSONを反映</button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btn-primary" onclick="saveAppSettingsModal()">💾 共通設定を保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- マスター確認・補正ページ（人間が見てわかりやすい一覧＆即時補正ビュー） -->
+<div id="inspectModal" class="modal-backdrop" onclick="if(event.target===this) closeModal('inspectModal')">
+  <div class="modal" style="max-width: 920px;">
+    <div class="modal-header">
+      <div>
+        <h3 style="color: #d8b4fe;">📋 マスターデータ確認・補正ページ（<span id="inspectVersionBadge">S1〜S8完全対応</span>）</h3>
+        <div style="font-size: 0.76rem; color: var(--muted); margin-top: 2px;">
+          現在の集結主リスト（歩・騎・弓）と乗り手スキル数値を一覧で確認し、兵種間違いや数値ズレをその場で補正できます。
+        </div>
+      </div>
+      <button class="btn-secondary" onclick="closeModal('inspectModal')">閉じる</button>
+    </div>
+    <div class="modal-body">
+      <div class="inspect-tabs">
+        <button type="button" id="tabInspectPools" class="inspect-tab-btn active" onclick="switchInspectTab('pools')">🛡️🐎🏹 1. 集結主プルダウン兵種一覧（補正）</button>
+        <button type="button" id="tabInspectHeroes" class="inspect-tab-btn" onclick="switchInspectTab('heroes')">⚔️ 2. 乗り手英雄・スキル数値一覧（補正）</button>
+        <button type="button" id="tabInspectTier" class="inspect-tab-btn" onclick="switchInspectTab('tier')">🏆 3. 環境Tier表テキスト確認</button>
+      </div>
+
+      <!-- タブ1: 集結主プルダウン兵種一覧 -->
+      <div id="inspectPanePools">
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; background:var(--bg); padding:10px; border-radius:8px; border:1px solid var(--border);">
+          <span style="font-size:0.8rem; font-weight:700; color:#e2e8f0;">＋ 集結主候補を追加：</span>
+          <input type="text" id="newPoolHeroName" placeholder="例: 新キャラ名 (S9)" style="max-width: 210px;" />
+          <select id="newPoolHeroType" style="max-width: 110px;">
+            <option value="inf">🛡️ 歩兵</option>
+            <option value="cav">🐎 騎兵</option>
+            <option value="arc">🏹 弓兵</option>
+          </select>
+          <button type="button" class="btn-primary" onclick="addPoolHeroManual()">追加する</button>
+          <button type="button" class="btn-secondary" style="margin-left:auto; font-size:0.76rem;" onclick="resetPoolsToDefault()">🔄 アルテマ準拠（全37名）にリセット</button>
+        </div>
+        <div id="inspectPoolsGrid" class="pool-columns"></div>
+      </div>
+
+      <!-- タブ2: 乗り手英雄スキル一覧 -->
+      <div id="inspectPaneHeroes" style="display:none; overflow-x:auto;">
+        <table class="inspect-table">
+          <thead>
+            <tr>
+              <th>英雄名</th>
+              <th style="width:82px;">兵種</th>
+              <th style="width:74px;">Tier</th>
+              <th style="width:110px;">バフ種別</th>
+              <th style="width:68px;">確率%</th>
+              <th style="width:62px;">持続T</th>
+              <th style="width:72px;">Lv5倍率%</th>
+              <th style="width:84px;">重複制限</th>
+              <th style="width:50px;">削除</th>
+            </tr>
+          </thead>
+          <tbody id="inspectHeroesBody"></tbody>
+        </table>
+      </div>
+
+      <!-- タブ3: Tier表確認 -->
+      <div id="inspectPaneTier" style="display:none;">
+        <div id="inspectTierPreview" style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px;"></div>
+      </div>
+
+      <hr style="border: 0; border-top: 1px solid var(--border); margin: 14px 0;" />
+      <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px;">
+        <button type="button" class="btn-blue" onclick="applyInspectChangesLocal()">💾 この端末に補正を反映する</button>
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+          <input type="password" id="inspectAdminPass" placeholder="管理者パスコード" style="width:160px;" />
+          <button type="button" class="btn-green" onclick="applyInspectAndPushFirebase()">☁️ 補正をFirebaseへ保存し全員に配信</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tier Modal (マスターデータ連動動的描画) -->
+<div id="tierModal" class="modal-backdrop" onclick="if(event.target===this) closeModal('tierModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="tierModalTitle" style="color: var(--accent);">🏆 S1〜S8 巨熊狩猟 環境Tier・詳細仕様解説</h3>
+      <button class="btn-secondary" onclick="closeModal('tierModal')">閉じる</button>
+    </div>
+    <div id="tierModalBody" class="modal-body"></div>
+  </div>
+</div>
+
+<!-- Hero Edit Modal -->
+<div id="heroEditModal" class="modal-backdrop" onclick="if(event.target===this) closeModal('heroEditModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 style="color: var(--blue);" id="editModalTitle">英雄データの編集</h3>
+      <button class="btn-secondary" onclick="closeModal('heroEditModal')">閉じる</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editHeroId" />
+      <div class="grid-2" style="margin-bottom: 10px;">
+        <label class="field">英雄名（世代表記推奨）<input type="text" id="editName" placeholder="例: ルナ (S8)" /></label>
+        <label class="field">兵種
+          <select id="editType">
+            <option value="inf">歩兵</option>
+            <option value="cav">騎兵</option>
+            <option value="arc">弓兵</option>
+          </select>
+        </label>
+      </div>
+      <div class="grid-3" style="margin-bottom: 10px;">
+        <label class="field">Tier区分
+          <select id="editTier">
+            <option value="S">Sランク</option>
+            <option value="A">Aランク</option>
+            <option value="-">対象外（乗り手非推奨）</option>
+          </select>
+        </label>
+        <label class="field">バフ種別
+          <select id="editBuffType">
+            <option value="atk">攻撃力UP</option>
+            <option value="leth">殺傷力UP</option>
+            <option value="dmg">与ダメ/被ダメ増加</option>
+            <option value="invalid">熊無効（状態異常系）</option>
+          </select>
+        </label>
+        <label class="field">重複制限
+          <select id="editUnique">
+            <option value="false">重複可（通常）</option>
+            <option value="true">集結内1人まで（重複不可）</option>
+          </select>
+        </label>
+      </div>
+      <div class="grid-2" style="margin-bottom: 10px;">
+        <label class="field">発動確率（% / 常時は100）<input type="number" id="editChance" min="1" max="100" value="100" /></label>
+        <label class="field">持続ターン数（1〜10）<input type="number" id="editDur" min="1" max="10" value="10" /></label>
+      </div>
+      <div class="grid-3" style="margin-bottom: 14px;">
+        <label class="field">Lv.1 倍率(%)<input type="number" id="editLv1" step="0.5" value="5" /></label>
+        <label class="field">Lv.3 倍率(%)<input type="number" id="editLv3" step="0.5" value="15" /></label>
+        <label class="field">Lv.5 倍率(%)<input type="number" id="editLv5" step="0.5" value="25" /></label>
+      </div>
+      <div style="display: flex; justify-content: space-between; gap: 8px;">
+        <button id="deleteHeroBtn" class="btn-danger" onclick="deleteHero()">🗑 この英雄を削除</button>
+        <button class="btn-primary" onclick="saveHeroEdit()">💾 保存する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Data Sync / JSON Modal -->
+<div id="dataModal" class="modal-backdrop" onclick="if(event.target===this) closeModal('dataModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 style="color: var(--green);">📦 マスタデータ管理（JSON / Firebase一括配信）</h3>
+      <button class="btn-secondary" onclick="closeModal('dataModal')">閉じる</button>
+    </div>
+    <div class="modal-body">
+      <div class="guide-box">
+        <strong>📖 新世代（S9以降）実装時のマスターデータ更新手順</strong>
+        <ol>
+          <li>下の<strong>「🤖 AI更新用プロンプト＋現行JSONをコピー」</strong>ボタンを押します（アルテマ優先・他日本語サイト補完でキャラ／スキル情報を収集し、Redditは仕様考察の参考として反映する指示文と現在データがセットでコピーされます）。</li>
+          <li>Gemini等のAIチャットにそのまま貼り付けて送信し、出力された<strong>更新済みJSON</strong>をコピーします。</li>
+          <li>下の「マスタJSONデータ」欄へ貼り付け（スマートマージON推奨）、管理者パスコードを入力して<strong>「☁️ Firebaseへ保存して全員に配信」</strong>を押すと、全英雄データと<strong>環境Tier表</strong>が同盟メンバー全員へ即時反映されます。</li>
+        </ol>
+      </div>
+
+      <div style="margin: 10px 0; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn-purple" onclick="copyAiUpdatePrompt()">🤖 AI更新用プロンプト＋現行JSONをコピー</button>
+        <button class="btn-blue" onclick="exportMasterJson()">📤 現行JSONのみコピー</button>
+      </div>
+
+      <label class="field" style="margin-top: 10px;">
+        マスタJSONデータ（英雄データ・集結主リスト（歩/騎/弓全キャラ）・環境Tier表を一括管理）
+        <textarea id="jsonArea" rows="8" placeholder="ここにマスタJSONを貼り付け..."></textarea>
+      </label>
+      <div style="margin-top: 10px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.84rem;">
+          <input type="checkbox" id="smartMergeChk" checked style="width:16px; height:16px;" />
+          <span><strong>スマートマージ（推奨）：</strong> 各自が設定済みの所持チェック・スキルLvを消さずに新データだけ統合</span>
+        </label>
+      </div>
+      <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+        <button class="btn-secondary" onclick="importLocalJson()">📥 自分の端末だけに反映</button>
+      </div>
+
+      <hr style="border: 0; border-top: 1px solid var(--border); margin: 16px 0;" />
+      <h4 style="margin-top: 0;">🔐 管理者用：Firebaseへ保存して同盟全員へ配信</h4>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px;">
+        <input type="password" id="adminPassInput" placeholder="管理者パスコードを入力" style="max-width: 220px;" />
+        <button class="btn-green" onclick="pushMasterToFirebase()">☁️ Firebaseへ保存して全員に配信</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mobile-sticky-bar">
+  <button type="button" class="btn-accent" style="flex:1; justify-content:center; padding:11px 14px; font-size:0.92rem;" onclick="copyFormation()">📋 編成表をテキストコピー</button>
+  <button type="button" class="btn-secondary" style="padding:11px 12px;" onclick="window.scrollTo({top:0, behavior:'smooth'})" title="上部へ戻る">⬆️</button>
+</div>
+
+<div id="toast" class="toast">コピーしました！</div>
+
+<script>
+  // ==========================================
+  // 0. PC / スマホ表示モード切替
+  // ==========================================
+  const VIEW_MODE_KEY = "rbn_bear_view_mode_v1";
+  let currentViewMode = localStorage.getItem(VIEW_MODE_KEY) || "auto";
+
+  function applyViewMode() {
+    const body = document.body;
+    const isNarrow = window.innerWidth <= 680;
+    const useMobile = currentViewMode === "mobile" || (currentViewMode === "auto" && isNarrow);
+
+    body.classList.toggle("view-mobile", useMobile);
+    body.classList.toggle("force-pc", currentViewMode === "pc");
+
+    const btnMobile = document.getElementById("btnViewMobile");
+    const btnPc = document.getElementById("btnViewPc");
+    if (btnMobile && btnPc) {
+      btnMobile.classList.toggle("active", useMobile);
+      btnPc.classList.toggle("active", !useMobile);
+    }
+  }
+
+  function setViewMode(mode) {
+    currentViewMode = ["auto", "mobile", "pc"].includes(mode) ? mode : "auto";
+    localStorage.setItem(VIEW_MODE_KEY, currentViewMode);
+    applyViewMode();
+    const labelMap = { auto: "🔄 自動表示モード（画面幅に連動）", mobile: "📱 スマホ表示モードに切り替えました", pc: "💻 PC表示モードに切り替えました" };
+    showToast(labelMap[currentViewMode]);
+  }
+
+  window.addEventListener("resize", () => {
+    if (currentViewMode === "auto") applyViewMode();
+  });
+
+  // ==========================================
+  // 1. 共通設定＆Firebase接続設定
+  // ==========================================
+  const SHARED_SETTINGS_KEY = RBNSuite.SHARED_SETTINGS_KEY;
+  const DEFAULT_SHARED_SETTINGS = RBNSuite.getDefaultSharedSettings();
+  const FIREBASE_CONFIG = RBNSuite.getFirebaseConfig();
+  const ADMIN_PASSCODE = "rbn2011";
+  const DB_NODE = RBNSuite.DB_PATHS.bearMaster;
+  const STORAGE_KEY = "rbn_bear_sim_user_v6";
+  const MASTER_CACHE_KEY = "rbn_bear_master_cache_v5";
+
+  // 配列型 lv（Firebaseでindex 0のnullが消えて詰まる現象）をオブジェクト形式 {1:.., 5:..} へ正規化
+  function normalizeHeroLvMap(rawLv) {
+    if (Array.isArray(rawLv)) {
+      const nums = rawLv.filter(v => v !== null && v !== undefined && !Number.isNaN(Number(v))).map(Number);
+      if (nums.length >= 5) {
+        return { 1: nums[0], 2: nums[1], 3: nums[2], 4: nums[3], 5: nums[4] };
+      }
+    }
+    if (rawLv && typeof rawLv === "object") {
+      return {
+        1: Number(rawLv[1] ?? rawLv["1"] ?? 5),
+        2: Number(rawLv[2] ?? rawLv["2"] ?? 10),
+        3: Number(rawLv[3] ?? rawLv["3"] ?? 15),
+        4: Number(rawLv[4] ?? rawLv["4"] ?? 20),
+        5: Number(rawLv[5] ?? rawLv["5"] ?? 25)
+      };
+    }
+    return { 1: 5, 2: 10, 3: 15, 4: 20, 5: 25 };
+  }
+
+  function sanitizeMasterObject(obj) {
+    if (!obj || typeof obj !== "object") return obj;
+    if (Array.isArray(obj.heroes)) {
+      obj.heroes = obj.heroes.map(h => ({
+        ...h,
+        lv: normalizeHeroLvMap(h.lv)
+      }));
+    }
+    if (obj.rallyPools && typeof obj.rallyPools === "object") {
+      ["inf", "cav", "arc"].forEach(t => {
+        if (Array.isArray(obj.rallyPools[t])) {
+          obj.rallyPools[t] = Array.from(new Set(obj.rallyPools[t].map(n => String(n || "").trim()).filter(Boolean)));
+        } else {
+          obj.rallyPools[t] = [];
+        }
+      });
+    }
+    return obj;
+  }
+
+  function saveMasterCache(dataObj) {
+    try {
+      if (!dataObj || !Array.isArray(dataObj.heroes)) return;
+      const sanitized = sanitizeMasterObject(JSON.parse(JSON.stringify(dataObj)));
+      sanitized._trustedManual = true;
+      sanitized.updatedAt = Number(dataObj.updatedAt) || Date.now();
+      localStorage.setItem(MASTER_CACHE_KEY, JSON.stringify(sanitized));
+    } catch (e) {}
+  }
+
+  function loadMasterCache() {
+    try {
+      const raw = localStorage.getItem(MASTER_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.heroes)) return null;
+      const sanitized = sanitizeMasterObject(parsed);
+      sanitized._trustedManual = true;
+      sanitized.updatedAt = Number(parsed.updatedAt) || 0;
+      return sanitized;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function normalizeDatabaseUrl(raw) {
+    return RBNSuite.normalizeDatabaseUrl(raw);
+  }
+
+  function loadSharedSettings() {
+    return RBNSuite.loadSharedSettings();
+  }
+
+  let sharedSettings = loadSharedSettings();
+  if (sharedSettings.firebase && sharedSettings.firebase.databaseUrl) {
+    FIREBASE_CONFIG.databaseURL = sharedSettings.firebase.databaseUrl;
+  }
+
+  function saveSharedSettings(next) {
+    sharedSettings = RBNSuite.saveSharedSettings(next);
+    FIREBASE_CONFIG.databaseURL = sharedSettings.firebase.databaseUrl;
+  }
+
+  function syncSettingsModalUI() {
+    document.getElementById("setLinkMap").value = RBNSuite.normalizeToolLink(sharedSettings.links.cityMapUrl, "cityMapUrl");
+    document.getElementById("setLinkBear").value = RBNSuite.normalizeToolLink(sharedSettings.links.bearNavUrl, "bearNavUrl");
+    document.getElementById("setLinkNotice").value = RBNSuite.normalizeToolLink(sharedSettings.links.noticeGenUrl, "noticeGenUrl");
+    document.getElementById("openLinkMap").href = document.getElementById("setLinkMap").value || "#";
+    document.getElementById("openLinkBear").href = document.getElementById("setLinkBear").value || "#";
+    document.getElementById("openLinkNotice").href = document.getElementById("setLinkNotice").value || "#";
+    const headerMapEl = document.getElementById("headerMapLink");
+    const headerNoticeEl = document.getElementById("headerNoticeLink");
+    if (headerMapEl) headerMapEl.href = document.getElementById("setLinkMap").value || "../map/";
+    if (headerNoticeEl) headerNoticeEl.href = document.getElementById("setLinkNotice").value || "../notice/";
+
+    document.getElementById("setFirebaseUrl").value = sharedSettings.firebase.databaseUrl || FIREBASE_CONFIG.databaseURL;
+    document.getElementById("setAiStudioKey").value = sharedSettings.ai.studioApiKey || "";
+    document.getElementById("setSharedJson").value = JSON.stringify(sharedSettings, null, 2);
+  }
+
+  function openAppSettingsModal() {
+    syncSettingsModalUI();
+    openModal("appSettingsModal");
+  }
+
+  async function copySharedSettingsJson() {
+    const payload = {
+      links: {
+        cityMapUrl: document.getElementById("setLinkMap").value.trim(),
+        bearNavUrl: document.getElementById("setLinkBear").value.trim(),
+        noticeGenUrl: document.getElementById("setLinkNotice").value.trim()
+      },
+      firebase: {
+        databaseUrl: normalizeDatabaseUrl(document.getElementById("setFirebaseUrl").value)
+      },
+      ai: {
+        studioApiKey: document.getElementById("setAiStudioKey").value.trim()
+      }
+    };
+    const str = JSON.stringify(payload, null, 2);
+    document.getElementById("setSharedJson").value = str;
+    const copied = await RBNSuite.safeCopyText(str);
+    showToast(copied ? "共通設定JSONをコピーしました！" : "テキスト欄のJSONを手動でコピーしてください");
+  }
+
+  function applySharedSettingsJson() {
+    try {
+      const parsed = JSON.parse(document.getElementById("setSharedJson").value);
+      saveSharedSettings({
+        links: {
+          cityMapUrl: parsed.links?.cityMapUrl ?? document.getElementById("setLinkMap").value,
+          bearNavUrl: parsed.links?.bearNavUrl ?? document.getElementById("setLinkBear").value,
+          noticeGenUrl: parsed.links?.noticeGenUrl ?? document.getElementById("setLinkNotice").value
+        },
+        firebase: {
+          databaseUrl: parsed.firebase?.databaseUrl ?? document.getElementById("setFirebaseUrl").value
+        },
+        ai: {
+          studioApiKey: parsed.ai?.studioApiKey ?? document.getElementById("setAiStudioKey").value
+        }
+      });
+      syncSettingsModalUI();
+      initFirebase();
+      showToast("共通設定JSONを反映しました！");
+    } catch (e) {
+      alert("JSON形式エラー: " + e.message);
+    }
+  }
+
+  function saveAppSettingsModal() {
+    saveSharedSettings({
+      links: {
+        cityMapUrl: document.getElementById("setLinkMap").value,
+        bearNavUrl: document.getElementById("setLinkBear").value,
+        noticeGenUrl: document.getElementById("setLinkNotice").value
+      },
+      firebase: {
+        databaseUrl: document.getElementById("setFirebaseUrl").value
+      },
+      ai: {
+        studioApiKey: document.getElementById("setAiStudioKey").value
+      }
+    });
+    FIREBASE_CONFIG.databaseURL = sharedSettings.firebase.databaseUrl;
+    syncSettingsModalUI();
+    initFirebase();
+    closeModal("appSettingsModal");
+    showToast("共通設定を保存しました！");
+  }
+
+  let db = null;
+
+  // ==========================================
+  // 2. S1〜S8 初期マスタデータ（アルテマ準拠・全37名完全版）
+  // ==========================================
+  const HERO_TYPE_REGISTRY = {
+    inf: [
+      "アマデウス (S1)", "ゾーイ (S2)", "ヘルガ (S1)", "アルカ (S4)", "ディエゴ (S8)",
+      "龍飛 (S5)", "トリトン (S6)", "チャールズ (S7)",
+      "エリック (S3)", "ハワード (SR)", "スミス (R)", "フォルスト (R)"
+    ],
+    cav: [
+      "アイヴァ (S7)", "ペーラ (S3)", "リズ (S8)", "スルード (S5)", "ソフィア (S6)",
+      "マーゴ (S4)", "ヒルデ (S2)", "ジェベル (S1)",
+      "チェンコ (SR)", "ゴードン (SR)", "ファハド (SR)", "エドウィン (R)"
+    ],
+    arc: [
+      "ルナ (S8)", "レン&ロン (S7)", "ヤン (S6)", "ビビアン (S5)", "ローザ (S4)", "マリン (S2)",
+      "イェーガー (S3)", "あまね (SR)", "インウー (SR)", "クイン (SR)", "サロ (S1)", "ダイアナ (SR)", "オリーブ (R)"
+    ]
+  };
+
+  const RALLY_RECOMMENDED = {
+    inf: ["アマデウス (S1)", "ゾーイ (S2)", "ヘルガ (S1)", "アルカ (S4)", "ディエゴ (S8)"],
+    cav: ["アイヴァ (S7)", "ペーラ (S3)", "リズ (S8)", "スルード (S5)", "ソフィア (S6)"],
+    arc: ["ルナ (S8)", "レン&ロン (S7)", "ヤン (S6)", "ビビアン (S5)", "ローザ (S4)", "マリン (S2)"]
+  };
+
+  const DEFAULT_MASTER = {
+    _trustedManual: true,
+    version: "S1〜S8完全対応（アルテマ準拠・全37名完全版）",
+    rallyPools: {
+      inf: [
+        "アマデウス (S1)", "ゾーイ (S2)", "ヘルガ (S1)", "アルカ (S4)", "ディエゴ (S8)",
+        "龍飛 (S5)", "トリトン (S6)", "チャールズ (S7)",
+        "エリック (S3)", "ハワード (SR)", "スミス (R)", "フォルスト (R)"
+      ],
+      cav: [
+        "アイヴァ (S7)", "ペーラ (S3)", "リズ (S8)", "スルード (S5)", "ソフィア (S6)",
+        "マーゴ (S4)", "ヒルデ (S2)", "ジェベル (S1)",
+        "チェンコ (SR)", "ゴードン (SR)", "ファハド (SR)", "エドウィン (R)"
+      ],
+      arc: [
+        "ルナ (S8)", "レン&ロン (S7)", "ヤン (S6)", "ビビアン (S5)", "ローザ (S4)", "マリン (S2)",
+        "イェーガー (S3)", "あまね (SR)", "インウー (SR)", "クイン (SR)", "サロ (S1)", "ダイアナ (SR)", "オリーブ (R)"
+      ]
+    },
+    tierGuide: {
+      title: "🏆 S1〜S8 巨熊狩猟 環境Tier・詳細仕様解説（アルテマ準拠）",
+      sections: [
+        {
+          heading: "1. 集結主（自集結）の世代別優先度（アルテマ評価・遠征スキル基準）",
+          items: [
+            "弓兵（最重要）： ルナ(S8) / レン&ロン(S7) ＞ ヤン(S6) ＞ ビビアン(S5) ＞ ローザ(S4) ＞ マリン(S2)",
+            "騎兵： アイヴァ(S7) ＞ ペーラ(S3) / リズ(S8) ＞ スルード(S5) ＞ ソフィア(S6)（リズは第1殺傷+50%・第3騎兵追加ダメ持ちで高火力）",
+            "歩兵： アマデウス(S1) ＞ ゾーイ(S2) ＞ ヘルガ(S1) ＞ アルカ(S4) ＞ ディエゴ(S8)（ディエゴは第3遠征に全部隊殺傷UPを持つが集結主専用。R英雄4名は発展・採集特化のためその他枠に収録）"
+          ]
+        },
+        {
+          heading: "2. 乗り手（参加者・左端）Sランク＆Aランク基準（アルテマ第1遠征スキル準拠）",
+          items: [
+            "Sランク（期待値25%クラス）： アマデウス(S1・臨戦態勢:殺傷+25%)、チェンコ(SR・完全武装:殺傷+25%)、インウー(SR・殺傷+25%)、あまね(SR・攻撃+25%)、マーゴ(S4・デストロイ:攻撃+25%)、ルナ(S8・攻撃+25%)、レン&ロン(S7・砲兵隊:攻撃+15%/殺傷+10%)、アイヴァ(S7・敵防御-25%)、リズ(S8・合金の使者:最大50%確率で殺傷+50%=期待値25%)、ペーラ(S3・ドゥーム:50%で敵被ダメ+50% ※重複不可)、ビビアン(S5・アウェイティング:敵被ダメ+25% ※重複不可)",
+            "Aランク（期待値15〜20%クラス）： ヤン(S6・4T毎100%追加攻撃=10T中2回/期待値20%)、マリン(S2・予測不能:40%で与ダメ+50%=期待値20%)、ローザ(S4・ノイズタイム:40%で与ダメ+50%=期待値20%)、イェーガー(S3・20%3T与ダメ+40%=期待値15.3%)、スルード(S5・歩弓与ダメ+15%/被ダメ-15%)、ヒルデ(S2・苦行:攻撃+15%/防御+10%)"
+          ]
+        },
+        {
+          heading: "3. 乗り手左端に絶対に入れてはいけない英雄（第1遠征が火力非寄与）",
+          items: [
+            "状態異常・防御・耐久系（集結主専用）： ゾーイ(裂傷は熊無効)、アルカ・ヘルガ・ジェベル・龍飛・ソフィア・ハワード・クイン(被ダメ軽減)、ディエゴ・トリトン・ゴードン(HP/防御UP)、エリック・チャールズ・ファハド(敵火力低下)。",
+            "10ターン制限と重複管理： 巨熊戦は10ターン終了のため4T周期のヤンは4T/8T目の2回発動となります。またペーラ・ビビアン等の敵被ダメ増加枠は同集結内での重複管理が重要です。"
+          ]
+        }
+      ]
+    },
+    heroes: [
+      { id: "amadeus", name: "アマデウス (S1)", type: "inf", tier: "S", buffType: "leth", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: false, defaultLv: 5, rallyAlias: "アマデウス (S1)", skillNote: "臨戦態勢：全部隊殺傷UP" },
+      { id: "chenko", name: "チェンコ (SR)", type: "cav", tier: "S", buffType: "leth", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: true, defaultLv: 5, rallyAlias: "チェンコ (SR)", skillNote: "完全武装：全部隊殺傷UP" },
+      { id: "inwoo", name: "インウー (SR)", type: "arc", tier: "S", buffType: "leth", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: true, defaultLv: 5, rallyAlias: "インウー (SR)", skillNote: "全部隊殺傷UP" },
+      { id: "amane", name: "あまね (SR)", type: "arc", tier: "S", buffType: "atk", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: true, defaultLv: 5, rallyAlias: "あまね (SR)", skillNote: "全部隊攻撃UP" },
+      { id: "margot", name: "マーゴ (S4)", type: "cav", tier: "S", buffType: "atk", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: true, defaultLv: 5, rallyAlias: "マーゴ (S4)", skillNote: "デストロイ：全部隊攻撃UP" },
+      { id: "luna", name: "ルナ (S8)", type: "arc", tier: "S", buffType: "atk", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: false, defaultLv: 5, rallyAlias: "ルナ (S8)", skillNote: "全部隊攻撃UP" },
+      { id: "renron", name: "レン&ロン (S7)", type: "arc", tier: "S", buffType: "atk", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: false, defaultLv: 5, rallyAlias: "レン&ロン (S7)", skillNote: "砲兵隊：攻撃+15%&殺傷+10%" },
+      { id: "aiva", name: "アイヴァ (S7)", type: "cav", tier: "S", buffType: "dmg", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: false, defaultLv: 5, rallyAlias: "アイヴァ (S7)", skillNote: "敵全部隊の総防御ダウン" },
+      { id: "liz", name: "リズ (S8)", type: "cav", tier: "S", buffType: "leth", unique: false, chance: 50, dur: 1, lv: {1:10, 2:20, 3:30, 4:40, 5:50}, defaultOwned: false, defaultLv: 5, rallyAlias: "リズ (S8)", skillNote: "合金の使者：確率で殺傷+50%" },
+      { id: "peira", name: "ペーラ (S3)", type: "cav", tier: "S", buffType: "dmg", unique: true, chance: 50, dur: 1, lv: {1:10, 2:20, 3:30, 4:40, 5:50}, defaultOwned: true, defaultLv: 5, rallyAlias: "ペーラ (S3)", skillNote: "ドゥーム：50%で敵被ダメUP" },
+      { id: "vivian", name: "ビビアン (S5)", type: "arc", tier: "S", buffType: "dmg", unique: true, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: false, defaultLv: 5, rallyAlias: "ビビアン (S5)", skillNote: "アウェイティング：敵被ダメUP" },
+      { id: "yang", name: "ヤン (S6)", type: "arc", tier: "A", buffType: "dmg", unique: false, chance: 20, dur: 1, lv: {1:20, 2:40, 3:60, 4:80, 5:100}, defaultOwned: false, defaultLv: 5, rallyAlias: "ヤン (S6)", skillNote: "4T毎追加攻撃(10T中2回)" },
+      { id: "marin", name: "マリン (S2)", type: "arc", tier: "A", buffType: "dmg", unique: false, chance: 40, dur: 1, lv: {1:10, 2:20, 3:30, 4:40, 5:50}, defaultOwned: true, defaultLv: 5, rallyAlias: "マリン (S2)", skillNote: "予測不能：40%で与ダメUP" },
+      { id: "rosa", name: "ローザ (S4)", type: "arc", tier: "A", buffType: "dmg", unique: false, chance: 40, dur: 1, lv: {1:10, 2:20, 3:30, 4:40, 5:50}, defaultOwned: true, defaultLv: 5, rallyAlias: "ローザ (S4)", skillNote: "ノイズタイム：40%で与ダメUP" },
+      { id: "jaeger", name: "イェーガー (S3)", type: "arc", tier: "A", buffType: "dmg", unique: false, chance: 20, dur: 3, lv: {1:8, 2:16, 3:24, 4:32, 5:40}, defaultOwned: true, defaultLv: 5, rallyAlias: "イェーガー (S3)", skillNote: "20%で3T間 与ダメUP" },
+      { id: "thrud", name: "スルード (S5)", type: "cav", tier: "A", buffType: "dmg", unique: false, chance: 100, dur: 10, lv: {1:3, 2:6, 3:9, 4:12, 5:15}, defaultOwned: false, defaultLv: 5, rallyAlias: "スルード (S5)", skillNote: "歩弓与ダメUP＆被ダメ軽減" },
+      { id: "hilde", name: "ヒルデ (S2)", type: "cav", tier: "A", buffType: "atk", unique: false, chance: 100, dur: 10, lv: {1:3, 2:6, 3:9, 4:12, 5:15}, defaultOwned: true, defaultLv: 5, rallyAlias: "ヒルデ (S2)", skillNote: "苦行：攻撃UP＆防御UP" },
+      // --- 以下20名：マスターデータ＆集結主プルダウン収録（第1遠征が防御・状態異常・発展系のため乗り手欄には非表示） ---
+      { id: "zoe", name: "ゾーイ (S2)", type: "inf", tier: "-", buffType: "invalid", unique: false, chance: 20, dur: 3, lv: {1:8, 2:16, 3:24, 4:32, 5:40}, defaultOwned: false, defaultLv: 5, rallyAlias: "ゾーイ (S2)", skillNote: "リッジワウンド：裂傷（巨熊無効・集結主向き）" },
+      { id: "helga", name: "ヘルガ (S1)", type: "inf", tier: "-", buffType: "invalid", unique: false, chance: 40, dur: 1, lv: {1:10, 2:20, 3:30, 4:40, 5:50}, defaultOwned: false, defaultLv: 5, rallyAlias: "ヘルガ (S1)", skillNote: "被ダメ軽減（耐久系・集結主向き）" },
+      { id: "arka", name: "アルカ (S4)", type: "inf", tier: "-", buffType: "invalid", unique: false, chance: 40, dur: 2, lv: {1:14, 2:28, 3:42, 4:56, 5:70}, defaultOwned: false, defaultLv: 5, rallyAlias: "アルカ (S4)", skillNote: "5T毎 歩弓被ダメ軽減（耐久系・集結主向き）" },
+      { id: "diego", name: "ディエゴ (S8)", type: "inf", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:3, 2:6, 3:9, 4:12, 5:15}, defaultOwned: false, defaultLv: 5, rallyAlias: "ディエゴ (S8)", skillNote: "全部隊HP/防御UP（耐久系・集結主向き）" },
+      { id: "ryuhi", name: "龍飛 (S5)", type: "inf", tier: "-", buffType: "invalid", unique: false, chance: 40, dur: 1, lv: {1:10, 2:20, 3:30, 4:40, 5:50}, defaultOwned: false, defaultLv: 5, rallyAlias: "龍飛 (S5)", skillNote: "確率で全部隊被ダメ軽減（耐久系）" },
+      { id: "triton", name: "トリトン (S6)", type: "inf", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:1, 2:2, 3:3, 4:4, 5:5}, defaultOwned: false, defaultLv: 5, rallyAlias: "トリトン (S6)", skillNote: "律令の力：全部隊総防御UP（耐久系）" },
+      { id: "charles", name: "チャールズ (S7)", type: "inf", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:4, 2:8, 3:12, 4:16, 5:20}, defaultOwned: false, defaultLv: 5, rallyAlias: "チャールズ (S7)", skillNote: "敵全部隊の総殺傷力低下（防衛系）" },
+      { id: "eric", name: "エリック (S3)", type: "inf", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:4, 2:8, 3:12, 4:16, 5:20}, defaultOwned: false, defaultLv: 5, rallyAlias: "エリック (S3)", skillNote: "敵全部隊の攻撃力低下（防衛系）" },
+      { id: "howard", name: "ハワード (SR)", type: "inf", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:4, 2:8, 3:12, 4:16, 5:20}, defaultOwned: false, defaultLv: 5, rallyAlias: "ハワード (SR)", skillNote: "プロテクト：全部隊被ダメ軽減（耐久系）" },
+      { id: "smith", name: "スミス (R)", type: "inf", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: false, defaultLv: 5, rallyAlias: "スミス (R)", skillNote: "善は急げ：鉄鉱場生産量UP（発展・採集）" },
+      { id: "forrest", name: "フォルスト (R)", type: "inf", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: false, defaultLv: 5, rallyAlias: "フォルスト (R)", skillNote: "一子相伝：伐採場生産量UP（発展・採集）" },
+      { id: "sophia", name: "ソフィア (S6)", type: "cav", tier: "-", buffType: "invalid", unique: false, chance: 40, dur: 1, lv: {1:10, 2:20, 3:30, 4:40, 5:50}, defaultOwned: false, defaultLv: 5, rallyAlias: "ソフィア (S6)", skillNote: "コントラクト・バインド：被ダメ軽減（耐久系）" },
+      { id: "jebel", name: "ジェベル (S1)", type: "cav", tier: "-", buffType: "invalid", unique: false, chance: 40, dur: 1, lv: {1:10, 2:20, 3:30, 4:40, 5:50}, defaultOwned: false, defaultLv: 5, rallyAlias: "ジェベル (S1)", skillNote: "確率で全部隊被ダメ軽減（耐久系）" },
+      { id: "gordon", name: "ゴードン (SR)", type: "cav", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: false, defaultLv: 5, rallyAlias: "ゴードン (SR)", skillNote: "幸せグルメ：全部隊HP上昇（耐久系）" },
+      { id: "fahad", name: "ファハド (SR)", type: "cav", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:4, 2:8, 3:12, 4:16, 5:20}, defaultOwned: false, defaultLv: 5, rallyAlias: "ファハド (SR)", skillNote: "敵の与ダメージ低下（防衛・移動系）" },
+      { id: "edwin", name: "エドウィン (R)", type: "cav", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: false, defaultLv: 5, rallyAlias: "エドウィン (R)", skillNote: "発破技士：石材場生産量UP（発展・採集）" },
+      { id: "quinn", name: "クイン (SR)", type: "arc", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:4, 2:8, 3:12, 4:16, 5:20}, defaultOwned: false, defaultLv: 5, rallyAlias: "クイン (SR)", skillNote: "危険予知：全部隊被ダメ軽減（耐久系）" },
+      { id: "salo", name: "サロ (S1)", type: "arc", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:3, 2:6, 3:9, 4:12, 5:15}, defaultOwned: false, defaultLv: 5, rallyAlias: "サロ (S1)", skillNote: "防衛・発展系バフ（防御HP/建設系）" },
+      { id: "diana", name: "ダイアナ (SR)", type: "arc", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:4, 2:8, 3:12, 4:16, 5:20}, defaultOwned: false, defaultLv: 5, rallyAlias: "ダイアナ (SR)", skillNote: "体力消費軽減・出征速度UP（周回専用）" },
+      { id: "olive", name: "オリーブ (R)", type: "arc", tier: "-", buffType: "invalid", unique: false, chance: 100, dur: 10, lv: {1:5, 2:10, 3:15, 4:20, 5:25}, defaultOwned: false, defaultLv: 5, rallyAlias: "オリーブ (R)", skillNote: "栽培専門家：製粉所生産量UP（発展・採集）" }
+    ]
+  };
+
+  let masterData = sanitizeMasterObject(JSON.parse(JSON.stringify(DEFAULT_MASTER)));
+  let userState = {
+    infTotal: 150000,
+    cavTotal: 180000,
+    arcTotal: 450000,
+    squadCount: 7,
+    marchCaps: [140000, 125000, 125000, 125000, 125000, 125000, 125000],
+    minTroop: 5000,
+    maxArcPct: 90,
+    stance: "mid",
+    rallyInf: "アルカ (S4)",
+    rallyCav: "ペーラ (S3)",
+    rallyArc: "ローザ (S4)",
+    buffPriority: "leth",
+    ownedMap: {},
+    lvMap: {}
+  };
+
+  // ==========================================
+  // 3. マスタデータ整合性保証＆Firebase同期ロジック
+  // ==========================================
+  function normalizeMasterConsistency(targetMaster, trustIncomingPools = true) {
+    sanitizeMasterObject(targetMaster);
+    if (!targetMaster.rallyPools || typeof targetMaster.rallyPools !== "object") {
+      targetMaster.rallyPools = { inf: [], cav: [], arc: [] };
+    }
+    const allPoolsPopulated = ["inf", "cav", "arc"].every(
+      (t) => Array.isArray(targetMaster.rallyPools[t]) && targetMaster.rallyPools[t].length > 0
+    );
+
+    ["inf", "cav", "arc"].forEach((t) => {
+      const baseDefaults = DEFAULT_MASTER.rallyPools[t] || [];
+      const existingPool = Array.isArray(targetMaster.rallyPools[t]) ? targetMaster.rallyPools[t] : [];
+      const fromHeroes = (targetMaster.heroes || [])
+        .filter((h) => h && h.type === t)
+        .map((h) => (h.rallyAlias || h.name || "").trim())
+        .filter(Boolean);
+
+      const otherTypes = ["inf", "cav", "arc"].filter((other) => other !== t);
+      const otherHeroNames = new Set();
+      (targetMaster.heroes || []).forEach((h) => {
+        if (h && otherTypes.includes(h.type)) {
+          if (h.name) otherHeroNames.add(String(h.name).trim());
+          if (h.rallyAlias) otherHeroNames.add(String(h.rallyAlias).trim());
+        }
+      });
+
+      const otherRegistryNames = new Set();
+      if (!trustIncomingPools && !allPoolsPopulated) {
+        otherTypes.forEach((other) => {
+          (HERO_TYPE_REGISTRY[other] || []).forEach((n) => otherRegistryNames.add(String(n).trim()));
+        });
+      }
+
+      const merged = [];
+      const seen = new Set();
+      const sourceList = (trustIncomingPools || allPoolsPopulated)
+        ? [...existingPool, ...fromHeroes]
+        : [...existingPool, ...baseDefaults, ...fromHeroes];
+
+      sourceList.forEach((name) => {
+        const clean = String(name || "").trim();
+        if (!clean || seen.has(clean)) return;
+        if (otherHeroNames.has(clean) || otherRegistryNames.has(clean)) return;
+        seen.add(clean);
+        merged.push(clean);
+      });
+      targetMaster.rallyPools[t] = merged;
+    });
+    return targetMaster;
+  }
+
+  normalizeMasterConsistency(masterData, true);
+
+  function initApp() {
+    applyViewMode();
+    const cachedMaster = loadMasterCache();
+    if (cachedMaster) {
+      masterData = normalizeMasterConsistency(cachedMaster, true);
+    }
+    loadUserState();
+    syncSettingsModalUI();
+    initFirebase();
+    renderAll();
+  }
+
+  function initFirebase() {
+    try {
+      const dbUrl = normalizeDatabaseUrl(sharedSettings.firebase?.databaseUrl || FIREBASE_CONFIG.databaseURL);
+      const initResult = RBNSuite.initRealtimeDatabase({
+        databaseUrl: dbUrl,
+        customAppName: "bearCustomApp"
+      });
+      if (!initResult.ok) {
+        updateSyncBadge(false);
+        return;
+      }
+      FIREBASE_CONFIG.databaseURL = initResult.databaseUrl;
+
+      const targetDb = initResult.db;
+      if (db) {
+        db.ref(DB_NODE).off();
+      }
+      db = targetDb;
+
+      db.ref(DB_NODE).on("value", (snapshot) => {
+        const val = snapshot.val();
+        updateSyncBadge(true);
+        if (val && val.heroes) {
+          const cached = loadMasterCache();
+          const remoteUpdatedAt = Number(val.updatedAt) || 0;
+          const cachedUpdatedAt = cached ? (Number(cached.updatedAt) || 0) : 0;
+          if (cached && cachedUpdatedAt > 0 && remoteUpdatedAt > 0 && remoteUpdatedAt < cachedUpdatedAt) {
+            return;
+          }
+          if (cached && cachedUpdatedAt > 0 && remoteUpdatedAt === 0 && Date.now() - cachedUpdatedAt < 30000) {
+            return;
+          }
+          const incoming = sanitizeMasterObject({
+            ...val,
+            _trustedManual: true,
+            updatedAt: remoteUpdatedAt || cachedUpdatedAt || Date.now()
+          });
+          applyMasterUpdate(incoming, true);
+          saveMasterCache(masterData);
+          renderAll();
+        }
+      }, (err) => {
+        console.warn("Firebase read warning:", err);
+        updateSyncBadge(false);
+      });
+    } catch (e) {
+      console.warn("Firebase init skipped:", e);
+      updateSyncBadge(false);
+    }
+  }
+
+  function updateSyncBadge(online) {
+    const el = document.getElementById("syncStatus");
+    if (online) {
+      el.className = "badge-sync";
+      el.textContent = "🟢 Firebase同期中";
+    } else {
+      el.className = "badge-sync offline";
+      el.textContent = "⚪ ローカル動作中";
+    }
+  }
+
+  function loadUserState() {
+    const saved =
+      localStorage.getItem(STORAGE_KEY) ||
+      localStorage.getItem("rbn_bear_sim_user_v5") ||
+      localStorage.getItem("rbn_bear_sim_user_v4") ||
+      localStorage.getItem("rbn_bear_sim_user_v3") ||
+      localStorage.getItem("rbn_bear_sim_user_v2");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        userState = { ...userState, ...parsed };
+        if (!parsed.buffPriority) {
+          userState.buffPriority = parsed.preferAtkBuff === true ? "atk" : "leth";
+        }
+        if (parsed.maxArcPct === undefined || parsed.maxArcPct === null || Number.isNaN(Number(parsed.maxArcPct))) {
+          userState.maxArcPct = 90;
+        }
+        if (!Array.isArray(userState.marchCaps) || userState.marchCaps.length < 7) {
+          const fallback = parsed.marchCap || 125000;
+          userState.marchCaps = [140000, fallback, fallback, fallback, fallback, fallback, fallback];
+        }
+      } catch (e) {}
+    }
+
+    masterData.heroes.forEach(h => {
+      if (userState.ownedMap[h.id] === undefined) userState.ownedMap[h.id] = !!h.defaultOwned;
+      if (userState.lvMap[h.id] === undefined) userState.lvMap[h.id] = h.defaultLv || 5;
+    });
+
+    document.getElementById("infTotal").value = userState.infTotal;
+    document.getElementById("cavTotal").value = userState.cavTotal;
+    document.getElementById("arcTotal").value = userState.arcTotal;
+    document.getElementById("squadCount").value = userState.squadCount;
+    document.getElementById("minTroop").value = userState.minTroop;
+    document.getElementById("maxArcPct").value = userState.maxArcPct;
+    for (let i = 0; i < 7; i++) {
+      document.getElementById(`cap${i}`).value = userState.marchCaps[i] || 125000;
+    }
+    const r = document.querySelector(`input[name="stance"][value="${userState.stance}"]`);
+    if (r) r.checked = true;
+    updateCapBoxes();
+    syncBuffPriorityButtons();
+  }
+
+  function syncBuffPriorityButtons() {
+    const btnLeth = document.getElementById("btnPriorityLeth");
+    const btnAtk = document.getElementById("btnPriorityAtk");
+    const isAtk = userState.buffPriority === "atk";
+    btnLeth.classList.toggle("active-leth", !isAtk);
+    btnAtk.classList.toggle("active-atk", isAtk);
+  }
+
+  function setBuffPriority(mode) {
+    userState.buffPriority = mode === "atk" ? "atk" : "leth";
+    syncBuffPriorityButtons();
+    recalc();
+    showToast(userState.buffPriority === "atk" ? "⚔️ 攻撃力UP優先に切り替えました" : "💥 殺傷力UP優先に切り替えました");
+  }
+
+  function updateCapBoxes() {
+    const count = Number(document.getElementById("squadCount").value) || 7;
+    for (let i = 0; i < 7; i++) {
+      const box = document.getElementById(`capBox${i}`);
+      if (box) {
+        if (i < count) box.classList.remove("inactive-cap");
+        else box.classList.add("inactive-cap");
+      }
+    }
+  }
+
+  function syncJoinCaps() {
+    const val = Math.max(1000, Number(document.getElementById("cap1").value) || 125000);
+    for (let i = 2; i < 7; i++) {
+      document.getElementById(`cap${i}`).value = val;
+    }
+    recalc();
+    showToast("乗り1軍の定員を2〜6軍へ反映しました");
+  }
+
+  function saveUserState() {
+    userState.infTotal = Math.max(0, Number(document.getElementById("infTotal").value) || 0);
+    userState.cavTotal = Math.max(0, Number(document.getElementById("cavTotal").value) || 0);
+    userState.arcTotal = Math.max(0, Number(document.getElementById("arcTotal").value) || 0);
+    userState.squadCount = Number(document.getElementById("squadCount").value) || 7;
+    userState.minTroop = Math.max(0, Number(document.getElementById("minTroop").value) || 0);
+    const rawArcPct = Number(document.getElementById("maxArcPct").value);
+    userState.maxArcPct = Number.isFinite(rawArcPct) ? Math.min(100, Math.max(0, rawArcPct)) : 90;
+    for (let i = 0; i < 7; i++) {
+      userState.marchCaps[i] = Math.max(1000, Number(document.getElementById(`cap${i}`).value) || 100000);
+    }
+    userState.rallyInf = document.getElementById("rallyInf").value;
+    userState.rallyCav = document.getElementById("rallyCav").value;
+    userState.rallyArc = document.getElementById("rallyArc").value;
+    const st = document.querySelector('input[name="stance"]:checked');
+    if (st) userState.stance = st.value;
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
+  }
+
+  function resetLocalUser() {
+    if (!confirm("入力した兵士数・各部隊定員・弓兵上限・所持英雄・バフ優先設定を初期値に戻しますか？")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem("rbn_bear_sim_user_v5");
+    localStorage.removeItem("rbn_bear_sim_user_v4");
+    localStorage.removeItem("rbn_bear_sim_user_v3");
+    localStorage.removeItem("rbn_bear_sim_user_v2");
+    location.reload();
+  }
+
+  // ==========================================
+  // 4. UI描画・兵種別プルダウン・Tier表動的描画
+  // ==========================================
+  function renderAll() {
+    // 現在の masterData のプール割り当てを尊重して正規化（古い DEFAULT_MASTER を強制マージしない）
+    normalizeMasterConsistency(masterData, true);
+    if (masterData.version) {
+      document.getElementById("masterVersionLabel").textContent = masterData.version;
+    }
+    renderRallySelects();
+    renderHeroCards();
+    renderTierModalContent();
+    recalc();
+  }
+
+  function renderTierModalContent() {
+    const guide = masterData.tierGuide || DEFAULT_MASTER.tierGuide;
+    document.getElementById("tierModalTitle").textContent = guide.title || "🏆 巨熊狩猟 環境Tier・詳細仕様解説";
+    const bodyEl = document.getElementById("tierModalBody");
+    bodyEl.innerHTML = (guide.sections || []).map(sec => {
+      const lis = (sec.items || []).map(item => {
+        const parts = item.split("：");
+        if (parts.length > 1) {
+          return `<li><strong>${parts[0]}：</strong>${parts.slice(1).join("：")}</li>`;
+        }
+        return `<li>${item}</li>`;
+      }).join("");
+      return `<h4>${sec.heading}</h4><ul>${lis}</ul>`;
+    }).join("");
+  }
+
+  function openTierModal() {
+    renderTierModalContent();
+    openModal("tierModal");
+  }
+
+  function getAllowedNamesForType(typeKey) {
+    const allowed = new Set();
+    const pool = (masterData.rallyPools && masterData.rallyPools[typeKey]) || [];
+    pool.forEach((n) => allowed.add(String(n).trim()));
+    (masterData.heroes || []).forEach((h) => {
+      if (h && h.type === typeKey) {
+        if (h.name) allowed.add(String(h.name).trim());
+        if (h.rallyAlias) allowed.add(String(h.rallyAlias).trim());
+      }
+    });
+    return allowed;
+  }
+
+  function isNameAllowedForType(name, typeKey) {
+    const clean = String(name || "").trim();
+    if (!clean) return false;
+    const otherTypes = ["inf", "cav", "arc"].filter((t) => t !== typeKey);
+    const inOtherHeroList = (masterData.heroes || []).some(
+      (h) => h && otherTypes.includes(h.type) && (String(h.name || "").trim() === clean || String(h.rallyAlias || "").trim() === clean)
+    );
+    if (inOtherHeroList) return false;
+
+    const pool = (masterData.rallyPools && masterData.rallyPools[typeKey]) || [];
+    if (pool.includes(clean)) return true;
+
+    const allowedSet = getAllowedNamesForType(typeKey);
+    return allowedSet.has(clean);
+  }
+
+  function renderRallySelects() {
+    const pools = masterData.rallyPools || { inf: [], cav: [], arc: [] };
+
+    const buildTypeOptions = (selectId, typeKey, savedVal) => {
+      const sel = document.getElementById(selectId);
+      const rawPool = Array.isArray(pools[typeKey]) ? pools[typeKey] : [];
+      const heroNamesOfType = (masterData.heroes || [])
+        .filter((h) => h && h.type === typeKey)
+        .map((h) => String(h.rallyAlias || h.name || "").trim())
+        .filter(Boolean);
+
+      const filteredPool = [];
+      const poolSeen = new Set();
+      [...rawPool, ...heroNamesOfType].forEach((name) => {
+        const clean = String(name || "").trim();
+        if (!clean || poolSeen.has(clean)) return;
+        if (!isNameAllowedForType(clean, typeKey)) return;
+        poolSeen.add(clean);
+        filteredPool.push(clean);
+      });
+
+      const recSeed = RALLY_RECOMMENDED[typeKey] || [];
+      const recommendedList = [];
+      const seen = new Set();
+      recSeed.forEach((name) => {
+        if (filteredPool.includes(name) && !seen.has(name)) {
+          seen.add(name);
+          recommendedList.push(name);
+        }
+      });
+      const otherSameTypeList = filteredPool.filter((name) => !seen.has(name));
+
+      const typeLabelMap = { inf: "歩兵", cav: "騎兵", arc: "弓兵" };
+      const tLabel = typeLabelMap[typeKey] || "";
+
+      let html = `<optgroup label="★ ${tLabel} 推奨上位">`;
+      recommendedList.forEach(name => {
+        html += `<option value="${name}">${name}</option>`;
+      });
+      html += `</optgroup><optgroup label="${tLabel} その他（${tLabel}全キャラ）">`;
+      otherSameTypeList.forEach(name => {
+        html += `<option value="${name}">${name}</option>`;
+      });
+      html += `</optgroup>`;
+      sel.innerHTML = html;
+
+      if (filteredPool.includes(savedVal)) {
+        sel.value = savedVal;
+      } else if (recommendedList.length > 0) {
+        sel.value = recommendedList[0];
+      } else if (otherSameTypeList.length > 0) {
+        sel.value = otherSameTypeList[0];
+      }
+    };
+
+    buildTypeOptions("rallyInf", "inf", userState.rallyInf);
+    buildTypeOptions("rallyCav", "cav", userState.rallyCav);
+    buildTypeOptions("rallyArc", "arc", userState.rallyArc);
+
+    userState.rallyInf = document.getElementById("rallyInf").value;
+    userState.rallyCav = document.getElementById("rallyCav").value;
+    userState.rallyArc = document.getElementById("rallyArc").value;
+  }
+
+  function renderHeroCards() {
+    const grid = document.getElementById("heroGrid");
+    const typeLabel = { inf: "歩", cav: "騎", arc: "弓" };
+    const buffLabel = { atk: "攻撃UP", leth: "殺傷UP", dmg: "ダメ増", invalid: "熊無効" };
+
+    grid.innerHTML = masterData.heroes
+      .filter(h => h && h.buffType !== "invalid")
+      .map(h => {
+      const owned = !!userState.ownedMap[h.id];
+      const lv = userState.lvMap[h.id] || 5;
+      const lvObj = normalizeHeroLvMap(h.lv);
+      const probText = h.chance === 100 ? "常時" : `${h.chance}%/${h.dur}T`;
+      const valText = h.buffType === "invalid" ? "効果なし" : `+${lvObj[lv] || lvObj[5]}%`;
+      const noteText = h.skillNote ? `｜${h.skillNote}` : "";
+      return `
+        <div class="hero-card ${owned ? "" : "disabled"}">
+          <div class="hero-left">
+            <input type="checkbox" ${owned ? "checked" : ""} onchange="toggleOwned('${h.id}', this.checked)" />
+            <span class="tier-tag tier-${h.tier}">${h.tier}</span>
+            <div class="hero-meta">
+              <div class="hero-name">${h.name} <span style="font-size:0.74rem; color:var(--muted);">[${typeLabel[h.type]}]</span></div>
+              <div class="hero-skill">${buffLabel[h.buffType]} ${valText}（${probText}）${h.unique ? "・重複不可" : ""}${noteText}</div>
+            </div>
+          </div>
+          <div class="hero-right">
+            <select onchange="changeHeroLv('${h.id}', this.value)">
+              <option value="1" ${lv==1?"selected":""}>Lv.1</option>
+              <option value="2" ${lv==2?"selected":""}>Lv.2</option>
+              <option value="3" ${lv==3?"selected":""}>Lv.3</option>
+              <option value="4" ${lv==4?"selected":""}>Lv.4</option>
+              <option value="5" ${lv==5?"selected":""}>Lv.5</option>
+            </select>
+            <button class="icon-btn" title="編集" onclick="openHeroEditor('${h.id}')">✏️</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function toggleOwned(id, checked) {
+    userState.ownedMap[id] = checked;
+    saveUserState();
+    renderHeroCards();
+    recalc();
+  }
+
+  function changeHeroLv(id, val) {
+    userState.lvMap[id] = Number(val);
+    saveUserState();
+    renderHeroCards();
+    recalc();
+  }
+
+  // ==========================================
+  // 5. 期待値計算（10ターンマルコフモデル）＆部隊別定員・弓兵上限対応兵力配分
+  // ==========================================
+  function calcEffectiveTurns(chancePct, duration) {
+    if (chancePct >= 100) return 10.0;
+    const p = chancePct / 100;
+    if (duration <= 1) return 10 * p;
+    let activeTurns = 0;
+    let stateProb = new Array(duration + 1).fill(0);
+    stateProb[0] = 1.0;
+    for (let t = 1; t <= 10; t++) {
+      let nextProb = new Array(duration + 1).fill(0);
+      for (let rem = 0; rem <= duration; rem++) {
+        const prob = stateProb[rem];
+        if (prob === 0) continue;
+        nextProb[duration] += prob * p;
+        activeTurns += prob * p;
+        if (rem > 1) {
+          nextProb[rem - 1] += prob * (1 - p);
+          activeTurns += prob * (1 - p);
+        } else {
+          nextProb[0] += prob * (1 - p);
+        }
+      }
+      stateProb = nextProb;
+    }
+    return activeTurns;
+  }
+
+  function getHeroScore(h, priorityMode) {
+    if (h.buffType === "invalid") return -1;
+    const lv = userState.lvMap[h.id] || 5;
+    const lvObj = normalizeHeroLvMap(h.lv);
+    const mag = lvObj[lv] || lvObj[5] || 0;
+    const effTurns = calcEffectiveTurns(h.chance, h.dur);
+    let ev = mag * (effTurns / 10);
+    if (priorityMode === "atk" && h.buffType === "atk") {
+      ev *= 1.06;
+    } else if (priorityMode === "leth" && h.buffType === "leth") {
+      ev *= 1.06;
+    }
+    if (h.chance === 100) ev += 0.05;
+    return ev;
+  }
+
+  function recalc() {
+    saveUserState();
+
+    const rInf = userState.rallyInf;
+    const rCav = userState.rallyCav;
+    const rArc = userState.rallyArc;
+    const warnEl = document.getElementById("interferenceWarn");
+    if (rCav.includes("ペーラ") && rInf.includes("ゾーイ")) {
+      warnEl.classList.add("active");
+    } else {
+      warnEl.classList.remove("active");
+    }
+
+    const usedInRally = [rInf, rCav, rArc];
+    const candidates = masterData.heroes
+      .filter(h => userState.ownedMap[h.id] && h.buffType !== "invalid")
+      .filter(h => !h.rallyAlias || !usedInRally.includes(h.rallyAlias))
+      .map(h => ({ ...h, score: getHeroScore(h, userState.buffPriority || "leth") }))
+      .sort((a, b) => b.score - a.score);
+
+    const n = userState.squadCount;
+    const caps = userState.marchCaps;
+    const minT = userState.minTroop;
+    const maxArcCapPerSquad = caps.map(c => Math.floor(c * ((userState.maxArcPct ?? 90) / 100)));
+    let remInf = userState.infTotal;
+    let remCav = userState.cavTotal;
+    let remArc = userState.arcTotal;
+
+    const arcRatios = [];
+    if (userState.stance === "top") {
+      arcRatios.push(0.80);
+      for (let i = 1; i < n; i++) arcRatios.push(Math.max(0.45, 0.75 - (i - 1) * 0.08));
+    } else if (userState.stance === "mid") {
+      arcRatios.push(0.60);
+      const joinPattern = [0.87, 0.82, 0.77, 0.65, 0.55, 0.45];
+      for (let i = 1; i < n; i++) arcRatios.push(joinPattern[i - 1] || 0.45);
+    } else {
+      arcRatios.push(0.35);
+      const supPattern = [0.88, 0.85, 0.80, 0.75, 0.60, 0.50];
+      for (let i = 1; i < n; i++) arcRatios.push(supPattern[i - 1] || 0.50);
+    }
+
+    const squads = [];
+    for (let i = 0; i < n; i++) {
+      let capLeft = caps[i];
+      const aInf = Math.min(remInf, minT, capLeft); remInf -= aInf; capLeft -= aInf;
+      const aCav = Math.min(remCav, minT, capLeft); remCav -= aCav; capLeft -= aCav;
+      const arcAllowedByCap = Math.max(0, maxArcCapPerSquad[i]);
+      const aArc = Math.min(remArc, minT, capLeft, arcAllowedByCap); remArc -= aArc; capLeft -= aArc;
+      squads.push({ inf: aInf, cav: aCav, arc: aArc, cap: caps[i], maxArc: maxArcCapPerSquad[i] });
+    }
+
+    const fillOrder = userState.stance === "top"
+      ? [...Array(n).keys()]
+      : [1, 2, 0, 3, 4, 5, 6].filter(idx => idx < n);
+
+    fillOrder.forEach(idx => {
+      const s = squads[idx];
+      const currentTotal = s.inf + s.cav + s.arc;
+      const room = Math.max(0, s.cap - currentTotal);
+      const arcRoom = Math.max(0, s.maxArc - s.arc);
+      const targetArc = Math.min(s.maxArc, Math.floor(s.cap * arcRatios[idx]));
+      const needArc = Math.max(0, Math.min(room, arcRoom, targetArc - s.arc, remArc));
+      s.arc += needArc;
+      remArc -= needArc;
+    });
+
+    fillOrder.forEach(idx => {
+      const s = squads[idx];
+      let room = Math.max(0, s.cap - (s.inf + s.cav + s.arc));
+      const arcRoom = Math.max(0, s.maxArc - s.arc);
+      if (room > 0 && arcRoom > 0 && remArc > 0) {
+        const add = Math.min(room, arcRoom, remArc);
+        s.arc += add; remArc -= add; room -= add;
+      }
+      if (room > 0 && remCav > 0) {
+        const add = Math.min(room, remCav);
+        s.cav += add; remCav -= add; room -= add;
+      }
+      if (room > 0 && remInf > 0) {
+        const add = Math.min(room, remInf);
+        s.inf += add; remInf -= add; room -= add;
+      }
+    });
+
+    const tbody = document.getElementById("resultBody");
+    const mobileCardsEl = document.getElementById("mobileResultCards");
+    let rowsHtml = "";
+    let mobileHtml = "";
+    window._lastExportLines = [];
+
+    squads.forEach((s, i) => {
+      const total = s.inf + s.cav + s.arc;
+      const pInf = total ? Math.round((s.inf / total) * 100) : 0;
+      const pCav = total ? Math.round((s.cav / total) * 100) : 0;
+      const pArc = total ? Math.max(0, 100 - pInf - pCav) : 0;
+
+      if (i === 0) {
+        const heroStr = `${rInf} / ${rCav} / ${rArc}`;
+        rowsHtml += `
+          <tr class="squad-rally">
+            <td><strong>🔥 自集結</strong><div style="font-size:0.74rem; color:var(--accent);">集結主</div></td>
+            <td><strong>${heroStr}</strong></td>
+            <td>${s.inf.toLocaleString()}</td>
+            <td>${s.cav.toLocaleString()}</td>
+            <td><strong style="color:var(--accent);">${s.arc.toLocaleString()}</strong></td>
+            <td>
+              <strong>${total.toLocaleString()}</strong> <span style="font-size:0.75rem; color:var(--muted);">/ ${s.cap.toLocaleString()}</span>
+              <div style="font-size:0.75rem; color:var(--muted);">${pInf}% / ${pCav}% / ${pArc}%</div>
+              <div class="ratio-bar">
+                <div class="r-inf" style="width:${pInf}%"></div>
+                <div class="r-cav" style="width:${pCav}%"></div>
+                <div class="r-arc" style="width:${pArc}%"></div>
+              </div>
+            </td>
+          </tr>
+        `;
+        mobileHtml += `
+          <div class="m-squad-card rally">
+            <div class="m-squad-head">
+              <span class="m-squad-title" style="color:var(--accent);">🔥 自集結（集結主）</span>
+              <span class="m-squad-cap">計 ${total.toLocaleString()} / ${s.cap.toLocaleString()}</span>
+            </div>
+            <div class="m-squad-hero">${heroStr}</div>
+            <div class="m-troop-pills">
+              <div class="m-pill"><span class="m-pill-lbl">🛡️ 歩兵</span><span class="m-pill-val">${s.inf.toLocaleString()}</span><span class="m-pill-pct">${pInf}%</span></div>
+              <div class="m-pill"><span class="m-pill-lbl">🐎 騎兵</span><span class="m-pill-val">${s.cav.toLocaleString()}</span><span class="m-pill-pct">${pCav}%</span></div>
+              <div class="m-pill" style="border-color:rgba(245,158,11,0.5);"><span class="m-pill-lbl">🏹 弓兵</span><span class="m-pill-val" style="color:var(--accent);">${s.arc.toLocaleString()}</span><span class="m-pill-pct">${pArc}%</span></div>
+            </div>
+            <div class="ratio-bar">
+              <div class="r-inf" style="width:${pInf}%"></div>
+              <div class="r-cav" style="width:${pCav}%"></div>
+              <div class="r-arc" style="width:${pArc}%"></div>
+            </div>
+          </div>
+        `;
+        window._lastExportLines.push(`【自集結】${heroStr}｜歩:${s.inf.toLocaleString()} / 騎:${s.cav.toLocaleString()} / 弓:${s.arc.toLocaleString()}（${pInf}/${pCav}/${pArc}%）`);
+      } else {
+        const leader = candidates[i - 1];
+        const leaderName = leader ? `${leader.name} (Lv.${userState.lvMap[leader.id] || 5})` : "未設定（自由枠）";
+        const dupTag = leader && leader.unique
+          ? `<div><span class="dup-badge">⚠️集結主含め集結内に1人まで（重複不可）</span></div>`
+          : "";
+        rowsHtml += `
+          <tr>
+            <td><strong>⚔️ 乗り ${i}軍</strong><div style="font-size:0.74rem; color:var(--muted);">参加者枠</div></td>
+            <td>
+              <strong style="color:var(--blue);">${leaderName}</strong> <span style="font-size:0.76rem; color:var(--muted);">＋ 自由2名</span>
+              ${dupTag}
+            </td>
+            <td>${s.inf.toLocaleString()}</td>
+            <td>${s.cav.toLocaleString()}</td>
+            <td><strong>${s.arc.toLocaleString()}</strong></td>
+            <td>
+              <strong>${total.toLocaleString()}</strong> <span style="font-size:0.75rem; color:var(--muted);">/ ${s.cap.toLocaleString()}</span>
+              <div style="font-size:0.75rem; color:var(--muted);">${pInf}% / ${pCav}% / ${pArc}%</div>
+              <div class="ratio-bar">
+                <div class="r-inf" style="width:${pInf}%"></div>
+                <div class="r-cav" style="width:${pCav}%"></div>
+                <div class="r-arc" style="width:${pArc}%"></div>
+              </div>
+            </td>
+          </tr>
+        `;
+        mobileHtml += `
+          <div class="m-squad-card">
+            <div class="m-squad-head">
+              <span class="m-squad-title">⚔️ 乗り ${i}軍</span>
+              <span class="m-squad-cap">計 ${total.toLocaleString()} / ${s.cap.toLocaleString()}</span>
+            </div>
+            <div class="m-squad-hero">左端: ${leaderName} <span style="font-size:0.74rem; color:var(--muted); font-weight:400;">＋ 自由2名</span>${dupTag}</div>
+            <div class="m-troop-pills">
+              <div class="m-pill"><span class="m-pill-lbl">🛡️ 歩兵</span><span class="m-pill-val">${s.inf.toLocaleString()}</span><span class="m-pill-pct">${pInf}%</span></div>
+              <div class="m-pill"><span class="m-pill-lbl">🐎 騎兵</span><span class="m-pill-val">${s.cav.toLocaleString()}</span><span class="m-pill-pct">${pCav}%</span></div>
+              <div class="m-pill"><span class="m-pill-lbl">🏹 弓兵</span><span class="m-pill-val" style="color:var(--accent);">${s.arc.toLocaleString()}</span><span class="m-pill-pct">${pArc}%</span></div>
+            </div>
+            <div class="ratio-bar">
+              <div class="r-inf" style="width:${pInf}%"></div>
+              <div class="r-cav" style="width:${pCav}%"></div>
+              <div class="r-arc" style="width:${pArc}%"></div>
+            </div>
+          </div>
+        `;
+        window._lastExportLines.push(`【乗り${i}軍】左端:${leaderName}｜歩:${s.inf.toLocaleString()} / 騎:${s.cav.toLocaleString()} / 弓:${s.arc.toLocaleString()}（${pInf}/${pCav}/${pArc}%）`);
+      }
+    });
+
+    tbody.innerHTML = rowsHtml;
+    if (mobileCardsEl) mobileCardsEl.innerHTML = mobileHtml;
+  }
+
+  function copyFormation() {
+    const header = `🐻 巨熊狩猟 最適編成表\n`;
+    const text = header + (window._lastExportLines || []).join("\n");
+    navigator.clipboard.writeText(text).then(() => showToast("編成表をクリップボードにコピーしました！"));
+  }
+
+  // ==========================================
+  // 6. 英雄個別編集モーダル（rallyPools 整合性連動）
+  // ==========================================
+  function openHeroEditor(heroId) {
+    const delBtn = document.getElementById("deleteHeroBtn");
+    if (!heroId) {
+      document.getElementById("editModalTitle").textContent = "新規英雄の追加";
+      document.getElementById("editHeroId").value = "";
+      document.getElementById("editName").value = "";
+      document.getElementById("editType").value = "arc";
+      document.getElementById("editTier").value = "S";
+      document.getElementById("editBuffType").value = "atk";
+      document.getElementById("editUnique").value = "false";
+      document.getElementById("editChance").value = 100;
+      document.getElementById("editDur").value = 10;
+      document.getElementById("editLv1").value = 6;
+      document.getElementById("editLv3").value = 18;
+      document.getElementById("editLv5").value = 30;
+      delBtn.style.display = "none";
+    } else {
+      const h = masterData.heroes.find(x => x.id === heroId);
+      if (!h) return;
+      const lvObj = normalizeHeroLvMap(h.lv);
+      document.getElementById("editModalTitle").textContent = `${h.name} のスキル編集`;
+      document.getElementById("editHeroId").value = h.id;
+      document.getElementById("editName").value = h.name;
+      document.getElementById("editType").value = h.type;
+      document.getElementById("editTier").value = h.tier;
+      document.getElementById("editBuffType").value = h.buffType;
+      document.getElementById("editUnique").value = String(!!h.unique);
+      document.getElementById("editChance").value = h.chance;
+      document.getElementById("editDur").value = h.dur;
+      document.getElementById("editLv1").value = lvObj[1];
+      document.getElementById("editLv3").value = lvObj[3];
+      document.getElementById("editLv5").value = lvObj[5];
+      delBtn.style.display = "inline-flex";
+    }
+    openModal("heroEditModal");
+  }
+
+  function saveHeroEdit() {
+    const id = document.getElementById("editHeroId").value || ("custom_" + Date.now());
+    const name = document.getElementById("editName").value.trim();
+    if (!name) return alert("英雄名を入力してください");
+    const lv1 = Number(document.getElementById("editLv1").value) || 0;
+    const lv3 = Number(document.getElementById("editLv3").value) || 0;
+    const lv5 = Number(document.getElementById("editLv5").value) || 0;
+    const lv2 = Number(((lv1 + lv3) / 2).toFixed(1));
+    const lv4 = Number(((lv3 + lv5) / 2).toFixed(1));
+    const newType = document.getElementById("editType").value;
+
+    const obj = {
+      id,
+      name,
+      type: newType,
+      tier: document.getElementById("editTier").value,
+      buffType: document.getElementById("editBuffType").value,
+      unique: document.getElementById("editUnique").value === "true",
+      chance: Number(document.getElementById("editChance").value) || 100,
+      dur: Number(document.getElementById("editDur").value) || 10,
+      lv: { 1: lv1, 2: lv2, 3: lv3, 4: lv4, 5: lv5 },
+      defaultOwned: true,
+      defaultLv: 5,
+      rallyAlias: name
+    };
+
+    const idx = masterData.heroes.findIndex(x => x.id === id);
+    if (idx >= 0) {
+      const prev = masterData.heroes[idx];
+      if (prev.type !== newType && Array.isArray(masterData.rallyPools[prev.type])) {
+        masterData.rallyPools[prev.type] = masterData.rallyPools[prev.type].filter(n => n !== prev.name && n !== prev.rallyAlias);
+      }
+      if (prev.name !== name && Array.isArray(masterData.rallyPools[newType])) {
+        masterData.rallyPools[newType] = masterData.rallyPools[newType].map(n => (n === prev.name || n === prev.rallyAlias) ? name : n);
+      }
+      masterData.heroes[idx] = { ...prev, ...obj };
+    } else {
+      masterData.heroes.push(obj);
+      userState.ownedMap[id] = true;
+      userState.lvMap[id] = 5;
+    }
+
+    if (!Array.isArray(masterData.rallyPools[newType])) {
+      masterData.rallyPools[newType] = [];
+    }
+    if (!masterData.rallyPools[newType].includes(name)) {
+      masterData.rallyPools[newType].push(name);
+    }
+
+    normalizeMasterConsistency(masterData, true);
+    saveMasterCache(masterData);
+    closeModal("heroEditModal");
+    renderAll();
+    showToast("英雄データを更新しました");
+  }
+
+  function deleteHero() {
+    const id = document.getElementById("editHeroId").value;
+    if (!id || !confirm("この英雄をリストから削除しますか？")) return;
+    const target = masterData.heroes.find(x => x.id === id);
+    masterData.heroes = masterData.heroes.filter(x => x.id !== id);
+    if (target && Array.isArray(masterData.rallyPools[target.type])) {
+      masterData.rallyPools[target.type] = masterData.rallyPools[target.type].filter(
+        n => n !== target.name && n !== target.rallyAlias
+      );
+    }
+    saveMasterCache(masterData);
+    closeModal("heroEditModal");
+    renderAll();
+  }
+
+  // ==========================================
+  // 7. マスタデータ JSON / AIプロンプト / Firebase 一括更新
+  // ==========================================
+  function openDataModal() {
+    normalizeMasterConsistency(masterData, true);
+    document.getElementById("jsonArea").value = JSON.stringify(masterData, null, 2);
+    openModal("dataModal");
+  }
+
+  function exportMasterJson() {
+    normalizeMasterConsistency(masterData, true);
+    const str = JSON.stringify(masterData, null, 2);
+    document.getElementById("jsonArea").value = str;
+    navigator.clipboard.writeText(str).then(() => showToast("マスタJSONをコピーしました！"));
+  }
+
+  function copyAiUpdatePrompt() {
+    normalizeMasterConsistency(masterData, true);
+    const currentJson = JSON.stringify(masterData, null, 2);
+    const promptText = `あなたはスマホゲーム「キングショット（KingShot）」の巨熊狩猟（Bear Trap）データアナリストです。
+以下の手順とルールに従って、既存の「マスターデータJSON」を最新世代までアップデートした新しいJSONを作成してください。
+
+【情報収集・分析の役割分担（厳守）】
+1. キャラクター情報・兵種・スキル数値の一次ソース（日本の攻略サイト最優先）：
+   - キャラクター名・兵種（inf=歩兵 / cav=騎兵 / arc=弓兵）・スキル効果・Lv倍率（"lv": {"1": ..., "2": ..., "3": ..., "4": ..., "5": ...} のオブジェクト形式）・確率・持続ターンなどの基礎マスタデータは、必ず「アルテマ（altema.jp/kingshot）」を最優先で参照して収集してください。
+   - アルテマで見つからない・未掲載の項目がある場合のみ、他の日本語攻略サイト（Game8・攻略Wiki・日本語データベース等）を補完的に参照して収集してください。
+   - 英語圏のRedditからキャラ情報やスキル数値を直接収集しないでください。
+2. Reddit（r/KingShot）の活用範囲（仕様考察・判定の参考のみ）：
+   - Redditの考察・検証情報は、「このスキルは巨熊にダメージが入る／無効になる」「状態異常や重複バフの挙動はどうなるか」「実戦での評価や立ち回り」といった**仕様判定・考察の参考**としてのみ活用してください。
+3. 集結主リスト（rallyPools）の兵種別更新：
+   - rallyPools.inf（歩兵のみ）、rallyPools.cav（騎兵のみ）、rallyPools.arc（弓兵のみ）のそれぞれに、アルテマ等の日本語攻略サイトで確認できた該当兵種のキャラクターのみを登録してください（他兵種を絶対に混ぜないでください）。
+4. 環境Tier表（tierGuide）の同時更新：
+   - JSON内の "version" および "tierGuide"（集結主優先度・乗り手S/A基準・10ターン仕様とReddit検証考察）も、新世代の評価を含めた最新内容へ書き換えてください。
+5. 出力形式の厳守：
+   - 既存キャラクターの "id" は変更しないでください（ユーザーの個人保存データとスマートマージするため）。
+   - "lv" は配列ではなく必ず {"1": 数値, "2": 数値, "3": 数値, "4": 数値, "5": 数値} の形式にしてください。
+   - 解説は最小限にし、そのままツールへ貼り付けられる完全なJSONコードブロックのみを出力してください。
+
+【現在のマスターデータJSON】
+${currentJson}`;
+
+    navigator.clipboard.writeText(promptText).then(() => {
+      showToast("🤖 AI更新用プロンプト＋現行JSONをコピーしました！");
+    });
+  }
+
+  function applyMasterUpdate(incoming, smartMerge) {
+    if (!incoming || !Array.isArray(incoming.heroes)) {
+      throw new Error("不正なJSON形式です（heroes配列が必要です）");
+    }
+    const normalized = normalizeMasterConsistency(sanitizeMasterObject(incoming), true);
+    normalized._trustedManual = true;
+    normalized.updatedAt = Number(incoming.updatedAt) || Date.now();
+    masterData = normalized;
+    if (!masterData.tierGuide) {
+      masterData.tierGuide = JSON.parse(JSON.stringify(DEFAULT_MASTER.tierGuide));
+    }
+    masterData.heroes.forEach(h => {
+      if (!smartMerge || userState.ownedMap[h.id] === undefined) {
+        userState.ownedMap[h.id] = !!h.defaultOwned;
+      }
+      if (!smartMerge || userState.lvMap[h.id] === undefined) {
+        userState.lvMap[h.id] = h.defaultLv || 5;
+      }
+    });
+    saveMasterCache(masterData);
+    saveUserState();
+  }
+
+  function importLocalJson() {
+    try {
+      const parsed = JSON.parse(document.getElementById("jsonArea").value);
+      parsed._trustedManual = true;
+      const smart = document.getElementById("smartMergeChk").checked;
+      applyMasterUpdate(parsed, smart);
+      closeModal("dataModal");
+      renderAll();
+      showToast("端末内のマスタデータとTier表を更新しました！");
+    } catch (e) {
+      alert("JSONの読み込みに失敗しました: " + e.message);
+    }
+  }
+
+  function pushMasterToFirebase() {
+    const pass = document.getElementById("adminPassInput").value.trim();
+    if (pass !== ADMIN_PASSCODE) {
+      return alert("管理者パスコードが一致しません。");
+    }
+    if (!db) {
+      initFirebase();
+    }
+    if (!db) {
+      return alert("Firebaseが初期化されていません。設定を確認してください。");
+    }
+    try {
+      const rawParsed = JSON.parse(document.getElementById("jsonArea").value);
+      rawParsed._trustedManual = true;
+      rawParsed.updatedAt = Date.now();
+      const parsed = normalizeMasterConsistency(sanitizeMasterObject(rawParsed), true);
+      parsed._trustedManual = true;
+      parsed.updatedAt = rawParsed.updatedAt;
+      saveMasterCache(parsed);
+      db.ref(DB_NODE).set(parsed).then(() => {
+        applyMasterUpdate(parsed, true);
+        closeModal("dataModal");
+        renderAll();
+        showToast("☁️ Firebaseへ保存し、全メンバーの英雄・Tier表を更新しました！");
+      }).catch(err => {
+        alert("Firebase書き込みエラー（Realtime Databaseのルールを確認してください）: " + err.message);
+      });
+    } catch (e) {
+      alert("JSON形式エラー: " + e.message);
+    }
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add("open"); }
+  function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  // ==========================================
+  // 8. マスターデータ確認・補正ページ（一覧表示＆ワンクリック兵種・数値補正）
+  // ==========================================
+  function openInspectModal() {
+    document.getElementById("inspectVersionBadge").textContent = masterData.version || "S1〜S8完全対応";
+    switchInspectTab("pools");
+    renderInspectModal();
+    openModal("inspectModal");
+  }
+
+  function switchInspectTab(tabName) {
+    ["pools", "heroes", "tier"].forEach((t) => {
+      const btn = document.getElementById("tabInspect" + t.charAt(0).toUpperCase() + t.slice(1));
+      const pane = document.getElementById("inspectPane" + t.charAt(0).toUpperCase() + t.slice(1));
+      if (btn) btn.classList.toggle("active", t === tabName);
+      if (pane) pane.style.display = t === tabName ? "block" : "none";
+    });
+    renderInspectModal();
+  }
+
+  function renderInspectModal() {
+    const poolsEl = document.getElementById("inspectPoolsGrid");
+    const typeDefs = [
+      { key: "inf", label: "🛡️ 歩兵（集結主）", color: "#60a5fa" },
+      { key: "cav", label: "🐎 騎兵（集結主）", color: "#34d399" },
+      { key: "arc", label: "🏹 弓兵（集結主）", color: "#fbbf24" }
+    ];
+    poolsEl.innerHTML = typeDefs.map((td) => {
+      const list = (masterData.rallyPools && masterData.rallyPools[td.key]) || [];
+      const rows = list.map((name, idx) => {
+        const isRec = (RALLY_RECOMMENDED[td.key] || []).includes(name);
+        return `
+          <div class="pool-item-row">
+            <span class="pool-item-name" title="${name}">${isRec ? "★ " : ""}${name}</span>
+            <div class="pool-item-actions">
+              <select aria-label="${name}の兵種変更" onchange="movePoolHeroType('${td.key}', ${idx}, this.value)">
+                <option value="inf" ${td.key === "inf" ? "selected" : ""}>歩兵</option>
+                <option value="cav" ${td.key === "cav" ? "selected" : ""}>騎兵</option>
+                <option value="arc" ${td.key === "arc" ? "selected" : ""}>弓兵</option>
+              </select>
+              <button type="button" class="mini-del-btn" title="削除" onclick="removePoolHero('${td.key}', ${idx})">×</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+      return `
+        <div class="pool-col">
+          <div class="pool-col-title" style="color:${td.color};">
+            <span>${td.label}</span>
+            <span style="font-size:0.75rem; color:var(--muted);">${list.length}名</span>
+          </div>
+          ${rows || '<div style="font-size:0.78rem; color:var(--muted);">登録なし</div>'}
+        </div>
+      `;
+    }).join("");
+
+    const hBody = document.getElementById("inspectHeroesBody");
+    hBody.innerHTML = (masterData.heroes || []).map((h, idx) => {
+      const lvObj = normalizeHeroLvMap(h.lv);
+      return `
+      <tr>
+        <td>
+          <strong>${h.name}</strong>
+          ${h.skillNote ? `<div style="font-size:0.7rem; color:var(--muted); margin-top:2px;">${h.skillNote}</div>` : ""}
+        </td>
+        <td>
+          <select onchange="updateInspectHeroField(${idx}, 'type', this.value)">
+            <option value="inf" ${h.type === "inf" ? "selected" : ""}>歩兵</option>
+            <option value="cav" ${h.type === "cav" ? "selected" : ""}>騎兵</option>
+            <option value="arc" ${h.type === "arc" ? "selected" : ""}>弓兵</option>
+          </select>
+        </td>
+        <td>
+          <select onchange="updateInspectHeroField(${idx}, 'tier', this.value)">
+            <option value="S" ${h.tier === "S" ? "selected" : ""}>S</option>
+            <option value="A" ${h.tier === "A" ? "selected" : ""}>A</option>
+            <option value="-" ${h.tier !== "S" && h.tier !== "A" ? "selected" : ""}>対象外</option>
+          </select>
+        </td>
+        <td>
+          <select onchange="updateInspectHeroField(${idx}, 'buffType', this.value)">
+            <option value="atk" ${h.buffType === "atk" ? "selected" : ""}>攻撃力UP</option>
+            <option value="leth" ${h.buffType === "leth" ? "selected" : ""}>殺傷力UP</option>
+            <option value="dmg" ${h.buffType === "dmg" ? "selected" : ""}>ダメ増</option>
+            <option value="invalid" ${h.buffType === "invalid" ? "selected" : ""}>熊無効</option>
+          </select>
+        </td>
+        <td><input type="number" min="1" max="100" value="${h.chance}" onchange="updateInspectHeroField(${idx}, 'chance', Number(this.value))" /></td>
+        <td><input type="number" min="1" max="10" value="${h.dur}" onchange="updateInspectHeroField(${idx}, 'dur', Number(this.value))" /></td>
+        <td><input type="number" step="0.5" value="${lvObj[5]}" onchange="updateInspectHeroLv5(${idx}, Number(this.value))" /></td>
+        <td>
+          <select onchange="updateInspectHeroField(${idx}, 'unique', this.value === 'true')">
+            <option value="false" ${!h.unique ? "selected" : ""}>重複可</option>
+            <option value="true" ${h.unique ? "selected" : ""}>1人まで</option>
+          </select>
+        </td>
+        <td><button type="button" class="mini-del-btn" onclick="deleteInspectHero(${idx})">🗑</button></td>
+      </tr>
+    `}).join("");
+
+    const tierEl = document.getElementById("inspectTierPreview");
+    const guide = masterData.tierGuide || DEFAULT_MASTER.tierGuide;
+    tierEl.innerHTML = (guide.sections || []).map((sec) => `
+      <h4 style="color:var(--accent); margin:8px 0 4px;">${sec.heading}</h4>
+      <ul style="padding-left:18px; color:#cbd5e1; font-size:0.82rem;">
+        ${(sec.items || []).map((it) => `<li>${it}</li>`).join("")}
+      </ul>
+    `).join("");
+  }
+
+  function movePoolHeroType(fromType, index, toType) {
+    if (fromType === toType) return;
+    const list = masterData.rallyPools[fromType];
+    if (!Array.isArray(list) || index < 0 || index >= list.length) return;
+    const [heroName] = list.splice(index, 1);
+    if (!Array.isArray(masterData.rallyPools[toType])) masterData.rallyPools[toType] = [];
+    if (!masterData.rallyPools[toType].includes(heroName)) {
+      masterData.rallyPools[toType].push(heroName);
+    }
+    (masterData.heroes || []).forEach((h) => {
+      if (h && (h.name === heroName || h.rallyAlias === heroName)) {
+        h.type = toType;
+      }
+    });
+    masterData._trustedManual = true;
+    renderInspectModal();
+    showToast(`「${heroName}」の兵種を変更しました`);
+  }
+
+  function removePoolHero(typeKey, index) {
+    const list = masterData.rallyPools[typeKey];
+    if (!Array.isArray(list)) return;
+    list.splice(index, 1);
+    masterData._trustedManual = true;
+    renderInspectModal();
+  }
+
+  function addPoolHeroManual() {
+    const nameInput = document.getElementById("newPoolHeroName");
+    const typeSel = document.getElementById("newPoolHeroType");
+    const name = nameInput.value.trim();
+    const typeKey = typeSel.value;
+    if (!name) return alert("キャラクター名を入力してください");
+    ["inf", "cav", "arc"].forEach((t) => {
+      if (Array.isArray(masterData.rallyPools[t])) {
+        masterData.rallyPools[t] = masterData.rallyPools[t].filter((n) => n !== name);
+      }
+    });
+    masterData.rallyPools[typeKey].push(name);
+    masterData._trustedManual = true;
+    nameInput.value = "";
+    renderInspectModal();
+    showToast(`「${name}」を追加しました`);
+  }
+
+  function resetPoolsToDefault() {
+    if (!confirm("マスターデータを最新のアルテマ準拠・全37名完全版（R英雄4名含む）にリセットしますか？")) return;
+    masterData = sanitizeMasterObject(JSON.parse(JSON.stringify(DEFAULT_MASTER)));
+    masterData._trustedManual = true;
+    masterData.updatedAt = Date.now();
+    renderInspectModal();
+    showToast("アルテマ準拠・全37名完全版にリセットしました");
+  }
+
+  function updateInspectHeroField(idx, field, val) {
+    const h = masterData.heroes[idx];
+    if (!h) return;
+    const prevType = h.type;
+    h[field] = val;
+    if (field === "type" && prevType !== val) {
+      const alias = h.rallyAlias || h.name;
+      if (Array.isArray(masterData.rallyPools[prevType])) {
+        masterData.rallyPools[prevType] = masterData.rallyPools[prevType].filter((n) => n !== alias && n !== h.name);
+      }
+      if (!Array.isArray(masterData.rallyPools[val])) masterData.rallyPools[val] = [];
+      if (!masterData.rallyPools[val].includes(alias)) masterData.rallyPools[val].push(alias);
+    }
+    masterData._trustedManual = true;
+  }
+
+  function updateInspectHeroLv5(idx, lv5Val) {
+    const h = masterData.heroes[idx];
+    if (!h) return;
+    const v5 = Number(lv5Val) || 0;
+    h.lv = {
+      1: Number((v5 * 0.2).toFixed(1)),
+      2: Number((v5 * 0.4).toFixed(1)),
+      3: Number((v5 * 0.6).toFixed(1)),
+      4: Number((v5 * 0.8).toFixed(1)),
+      5: v5
+    };
+    masterData._trustedManual = true;
+  }
+
+  function deleteInspectHero(idx) {
+    const h = masterData.heroes[idx];
+    if (!h || !confirm(`「${h.name}」を削除しますか？`)) return;
+    masterData.heroes.splice(idx, 1);
+    masterData._trustedManual = true;
+    renderInspectModal();
+  }
+
+  function applyInspectChangesLocal() {
+    masterData._trustedManual = true;
+    masterData.updatedAt = Date.now();
+    normalizeMasterConsistency(masterData, true);
+    saveMasterCache(masterData);
+    renderAll();
+    closeModal("inspectModal");
+    showToast("💾 補正内容をこの端末に反映しました！");
+  }
+
+  function applyInspectAndPushFirebase() {
+    const pass = document.getElementById("inspectAdminPass").value.trim();
+    if (pass !== ADMIN_PASSCODE) {
+      return alert("管理者パスコードが一致しません。");
+    }
+    if (!db) {
+      initFirebase();
+    }
+    if (!db) {
+      return alert("Firebaseが初期化されていません。設定を確認してください。");
+    }
+    const nowTs = Date.now();
+    masterData._trustedManual = true;
+    masterData.updatedAt = nowTs;
+    const cleaned = normalizeMasterConsistency(sanitizeMasterObject(JSON.parse(JSON.stringify(masterData))), true);
+    cleaned._trustedManual = true;
+    cleaned.updatedAt = nowTs;
+    saveMasterCache(cleaned);
+    db.ref(DB_NODE).set(cleaned).then(() => {
+      applyMasterUpdate(cleaned, true);
+      renderAll();
+      closeModal("inspectModal");
+      showToast("☁️ 補正内容をFirebaseへ保存し、全メンバーへ配信しました！");
+    }).catch((err) => {
+      alert("Firebase書き込みエラー: " + err.message);
+    });
+  }
+
+  window.addEventListener("DOMContentLoaded", initApp);
+</script>
+</body>
+</html>
