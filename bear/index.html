@@ -917,6 +917,263 @@
       cursor: pointer;
     }
 
+    /* 部隊一覧スクショAI読込モーダル */
+    .troop-ocr-steps {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .troop-ocr-step {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .troop-ocr-step.active {
+      background: rgba(14, 165, 233, 0.18);
+      border-color: var(--blue);
+      color: #e0f2fe;
+    }
+    .troop-ocr-step.done {
+      background: rgba(16, 185, 129, 0.16);
+      border-color: var(--green);
+      color: #a7f3d0;
+    }
+    .troop-ocr-api-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.78rem;
+    }
+    .troop-ocr-dropzone {
+      border: 2px dashed rgba(56, 189, 248, 0.48);
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.65);
+      padding: 18px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .troop-ocr-dropzone:hover,
+    .troop-ocr-dropzone.dragover {
+      border-color: var(--blue);
+      background: rgba(14, 165, 233, 0.12);
+    }
+    .troop-ocr-file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+      gap: 8px;
+      max-height: 190px;
+      overflow-y: auto;
+    }
+    .troop-ocr-file-card {
+      position: relative;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .troop-ocr-file-card img {
+      width: 100%;
+      height: 82px;
+      object-fit: cover;
+      display: block;
+    }
+    .troop-ocr-file-name {
+      padding: 3px 5px;
+      font-size: 0.68rem;
+      color: #cbd5e1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .troop-ocr-file-rm {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(248, 113, 113, 0.75);
+      color: #fecaca;
+      font-size: 0.75rem;
+      line-height: 1;
+    }
+    .troop-ocr-progress {
+      display: none;
+      background: rgba(14, 165, 233, 0.14);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 0.8rem;
+      color: #e0f2fe;
+    }
+    .troop-ocr-progress.show {
+      display: block;
+    }
+    .troop-ocr-error {
+      color: #fca5a5;
+      font-size: 0.78rem;
+      min-height: 16px;
+    }
+    .troop-ocr-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .troop-ocr-totals {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 10px;
+    }
+    .troop-ocr-total-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .troop-ocr-total-lbl {
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .troop-ocr-total-val {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+    .troop-ocr-cat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      max-height: 46vh;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .troop-ocr-cat-col {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .troop-ocr-cat-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      font-weight: 800;
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .troop-ocr-unit-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      transition: border-color 0.15s, opacity 0.15s;
+    }
+    .troop-ocr-unit-card.checked {
+      border-color: rgba(16, 185, 129, 0.65);
+      background: rgba(16, 185, 129, 0.08);
+    }
+    .troop-ocr-unit-card.unchecked {
+      opacity: 0.56;
+    }
+    .troop-ocr-unit-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .troop-ocr-unit-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #f8fafc;
+      min-width: 0;
+    }
+    .troop-ocr-unit-check input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--green);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .troop-ocr-tier-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(245, 158, 11, 0.18);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fcd34d;
+      white-space: nowrap;
+    }
+    .troop-ocr-unit-inputs {
+      display: grid;
+      grid-template-columns: 1fr 62px 24px;
+      gap: 5px;
+      align-items: center;
+    }
+    .troop-ocr-unit-inputs input[type="number"],
+    .troop-ocr-unit-inputs select {
+      padding: 4px 6px;
+      font-size: 0.78rem;
+      min-height: 28px !important;
+      width: 100%;
+    }
+    .troop-ocr-unit-del {
+      padding: 0;
+      width: 24px;
+      height: 26px;
+      border-radius: 6px;
+      background: rgba(239, 68, 68, 0.16);
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      color: #fca5a5;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    @media (max-width: 780px) {
+      .troop-ocr-cat-grid {
+        grid-template-columns: 1fr;
+      }
+      .troop-ocr-totals {
+        grid-template-columns: 1fr;
+      }
+    }
+
     @media (max-width: 640px) {
       th, td { padding: 8px 6px; font-size: 0.8rem; }
       .hero-list { grid-template-columns: 1fr; }
@@ -960,6 +1217,7 @@
 <section class="card">
   <div class="card-title">
     <span><span class="step-badge">STEP 1</span>所持兵士数（総兵力）の入力</span>
+    <button type="button" class="btn-blue" style="font-size:0.78rem; padding:5px 11px;" onclick="openTroopOcrModal()">📷 スクショから兵数読込</button>
   </div>
   <div class="grid-3 troop-input-grid">
     <label class="field">
@@ -1154,6 +1412,87 @@
   <div id="mobileResultCards" class="mobile-result-cards"></div>
   <div id="troopSummaryBox" class="troop-summary-box" aria-live="polite"></div>
 </section>
+
+<!-- 部隊一覧スクショAI読込＆使用ランク選択モーダル -->
+<div id="troopOcrModal" class="modal-backdrop" onclick="if(event.target===this && !troopOcrRunning) closeModal('troopOcrModal')">
+  <div class="modal" style="max-width: 900px;">
+    <div class="modal-header">
+      <h3 style="color: var(--blue);">📷 部隊一覧スクショから所持兵数をAI読込</h3>
+      <button type="button" class="btn-secondary" onclick="if(!troopOcrRunning) closeModal('troopOcrModal')">閉じる</button>
+    </div>
+    <div class="modal-body" style="display:flex; flex-direction:column; gap:10px;">
+      <div class="troop-ocr-steps">
+        <span id="troopOcrStep1Badge" class="troop-ocr-step active">STEP 1: スクショ追加・AI解析</span>
+        <span style="color:var(--muted); font-size:0.75rem;">→</span>
+        <span id="troopOcrStep2Badge" class="troop-ocr-step">STEP 2: 使うランクを選択・確認して反映</span>
+      </div>
+
+      <!-- STEP 1 -->
+      <div id="troopOcrStep1Pane" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="troop-ocr-api-bar">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span id="troopOcrApiStatus">APIキー確認中...</span>
+            <button type="button" class="btn-secondary" style="padding:3px 8px; font-size:0.74rem;" onclick="openAppSettingsModal()">⚙️ APIキー設定</button>
+          </div>
+          <label style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:#cbd5e1;">
+            使用モデル:
+            <select id="troopOcrModelSelect" style="font-size:0.75rem; padding:3px 6px; min-height:28px;"></select>
+          </label>
+        </div>
+
+        <div style="font-size:0.78rem; color:#cbd5e1; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 10px; line-height:1.5;">
+          ゲーム内の「部隊一覧（総兵力画面）」のスクショをアップロードすると、<strong>歩兵・騎兵・弓兵</strong>ごとに<strong>切り札・名誉・精鋭など強い順</strong>に兵数を自動読み取りします（複数枚OK）。<br />
+          ※ 次の画面で<strong>使うランクだけチェック選択（既定は最強ランクのみ）</strong>してからSTEP 1の総数欄へ入力できます。
+        </div>
+
+        <div id="troopOcrDropZone" class="troop-ocr-dropzone" tabindex="0" role="button" aria-label="部隊一覧スクショを選択またはドロップ">
+          <div style="font-size:0.88rem; font-weight:700; color:#f1f5f9; margin-bottom:4px;">📸 ここをタップして部隊一覧スクショを選択（複数枚OK）</div>
+          <div style="font-size:0.74rem; color:var(--muted);">ドラッグ＆ドロップ ／ PCなら Ctrl+V でクリップボード貼り付けもできます</div>
+          <input id="troopOcrFileInput" type="file" accept="image/*" multiple style="display:none;" />
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <span id="troopOcrFileCount" style="font-size:0.78rem; color:#cbd5e1;">選択中の画像：0枚</span>
+          <button type="button" id="troopOcrClearFilesBtn" class="btn-secondary" style="padding:3px 8px; font-size:0.74rem;" disabled>すべてクリア</button>
+        </div>
+        <div id="troopOcrFileGrid" class="troop-ocr-file-grid"></div>
+
+        <div id="troopOcrProgress" class="troop-ocr-progress"></div>
+        <div id="troopOcrError" class="troop-ocr-error"></div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-secondary" onclick="if(!troopOcrRunning) closeModal('troopOcrModal')">キャンセル</button>
+          <button type="button" id="troopOcrRunBtn" class="btn-primary" disabled>🤖 AIで部隊一覧を読み取る</button>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div id="troopOcrStep2Pane" style="display:none; flex-direction:column; gap:10px;">
+        <div class="troop-ocr-presets">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button type="button" class="btn-accent" style="padding:4px 9px; font-size:0.75rem;" onclick="applyTroopOcrPreset('top1')">⭐ 最強ランクのみ（切り札等）</button>
+            <button type="button" class="btn-blue" style="padding:4px 9px; font-size:0.75rem;" onclick="applyTroopOcrPreset('top2')">🔥 上位2ランク</button>
+            <button type="button" class="btn-secondary" style="padding:4px 9px; font-size:0.75rem;" onclick="applyTroopOcrPreset('all')">☑️ すべて選択</button>
+            <button type="button" class="btn-secondary" style="padding:4px 9px; font-size:0.75rem;" onclick="applyTroopOcrPreset('none')">☐ すべて解除</button>
+          </div>
+          <button type="button" class="btn-secondary" style="padding:4px 9px; font-size:0.75rem;" onclick="addManualTroopOcrRow()">＋ 行を手動追加</button>
+        </div>
+
+        <div id="troopOcrTotalsBar" class="troop-ocr-totals"></div>
+
+        <div id="troopOcrCatGrid" class="troop-ocr-cat-grid"></div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px;">
+          <button type="button" class="btn-secondary" onclick="setTroopOcrStep(1)">← 画像選択に戻る</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn-secondary" onclick="closeModal('troopOcrModal')">キャンセル</button>
+            <button type="button" id="troopOcrApplyBtn" class="btn-primary" onclick="applyTroopOcrTotalsToStep1()">✅ 選択した合計をSTEP 1の総数欄へ入力</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- 共通設定モーダル（リンク設定・Firebase・AI Studio API・共通JSON） -->
 <div id="appSettingsModal" class="modal-backdrop" onclick="if(event.target===this) closeModal('appSettingsModal')">
@@ -1629,6 +1968,7 @@
     });
     FIREBASE_CONFIG.databaseURL = sharedSettings.firebase.databaseUrl;
     syncSettingsModalUI();
+    if (typeof updateTroopOcrApiStatus === "function") updateTroopOcrApiStatus();
     initFirebase();
     closeModal("appSettingsModal");
     showToast("共通設定を保存しました！");
@@ -3123,6 +3463,7 @@ ${currentJson}`;
   // 全モーダルで ESC キー閉じ対応
   RBNSuite.enableModalEscapeClose(() => {
     ["appSettingsModal", "inspectModal", "tierModal", "heroEditModal", "dataModal"].forEach(closeModal);
+    if (!troopOcrRunning) closeModal("troopOcrModal");
   });
 
   // 別タブでの共通設定変更・オンライン/オフライン切替を即時同期
@@ -3131,6 +3472,7 @@ ${currentJson}`;
     sharedSettings = latest;
     FIREBASE_CONFIG.databaseURL = latest.firebase.databaseUrl;
     syncSettingsModalUI();
+    if (typeof updateTroopOcrApiStatus === "function") updateTroopOcrApiStatus();
     if (prevDbUrl !== latest.firebase.databaseUrl) {
       initFirebase();
     }
@@ -3180,6 +3522,659 @@ ${currentJson}`;
 
     RBNSuite.onPlayfulPrefsChange(() => renderBearGuide(false));
     RBNSuite.ensureMemberAvatarsLoaded(false).then(() => renderBearGuide(false));
+  })();
+
+  // ==========================================
+  // 8. 部隊一覧スクショAI読込＆ランク別チェック選択機能
+  // ==========================================
+  const TROOP_OCR_DEFAULT_MODELS = ["gemini-flash-preview", "gemini-2.5-flash", "gemini-flash-lite-latest"];
+  const TROOP_RANK_SCORE_TABLE = [
+    ["真金", 120],
+    ["黄金", 115],
+    ["伝説", 110],
+    ["切り札", 100],
+    ["切札", 100],
+    ["名誉", 90],
+    ["精鋭", 80],
+    ["熟練", 70],
+    ["ベテラン", 65],
+    ["上級", 60],
+    ["中級", 50],
+    ["初級", 40],
+    ["見習", 30]
+  ];
+
+  let troopOcrFiles = [];
+  let troopOcrRunning = false;
+  let troopOcrItems = [];
+  let troopOcrSeq = 1;
+
+  function getBearGeminiApiKey() {
+    const fromShared = sharedSettings && sharedSettings.ai && sharedSettings.ai.studioApiKey
+      ? String(sharedSettings.ai.studioApiKey).trim()
+      : "";
+    if (fromShared) return fromShared;
+    try {
+      return String(localStorage.getItem("ks_gemini_api_key") || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function populateTroopOcrModels() {
+    const sel = document.getElementById("troopOcrModelSelect");
+    if (!sel) return;
+    let storedList = [];
+    let selectedModel = "";
+    try {
+      selectedModel = String(localStorage.getItem("ks_gemini_model") || "").trim();
+      const raw = localStorage.getItem("ks_available_models");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) storedList = parsed.filter(m => typeof m === "string" && m.trim());
+      }
+    } catch (_) {}
+    const merged = [...new Set([selectedModel, ...storedList, ...TROOP_OCR_DEFAULT_MODELS].filter(Boolean))];
+    sel.innerHTML = "";
+    merged.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = m;
+      sel.appendChild(opt);
+    });
+    sel.value = selectedModel || TROOP_OCR_DEFAULT_MODELS[0];
+  }
+
+  function updateTroopOcrApiStatus() {
+    const statusEl = document.getElementById("troopOcrApiStatus");
+    const runBtn = document.getElementById("troopOcrRunBtn");
+    const key = getBearGeminiApiKey();
+    if (statusEl) {
+      if (key) {
+        statusEl.textContent = "✅ AI Studio APIキー設定済（全ツール共通）";
+        statusEl.style.color = "#6ee7b7";
+        statusEl.style.fontWeight = "700";
+      } else {
+        statusEl.textContent = "⚠️ AI Studio APIキーが未設定です（設定から登録してください）";
+        statusEl.style.color = "#fca5a5";
+        statusEl.style.fontWeight = "700";
+      }
+    }
+    if (runBtn) {
+      runBtn.disabled = troopOcrRunning || troopOcrFiles.length === 0 || !key;
+    }
+  }
+
+  function setTroopOcrStep(stepNum) {
+    const isStep2 = stepNum === 2;
+    document.getElementById("troopOcrStep1Pane").style.display = isStep2 ? "none" : "flex";
+    document.getElementById("troopOcrStep2Pane").style.display = isStep2 ? "flex" : "none";
+    document.getElementById("troopOcrStep1Badge").className = "troop-ocr-step " + (isStep2 ? "done" : "active");
+    document.getElementById("troopOcrStep2Badge").className = "troop-ocr-step " + (isStep2 ? "active" : "");
+  }
+
+  function renderTroopOcrFiles() {
+    const grid = document.getElementById("troopOcrFileGrid");
+    const countEl = document.getElementById("troopOcrFileCount");
+    const clearBtn = document.getElementById("troopOcrClearFilesBtn");
+    if (!grid) return;
+    grid.innerHTML = "";
+    countEl.textContent = `選択中の画像：${troopOcrFiles.length}枚`;
+    clearBtn.disabled = troopOcrRunning || troopOcrFiles.length === 0;
+    updateTroopOcrApiStatus();
+
+    troopOcrFiles.forEach((item, idx) => {
+      const card = document.createElement("div");
+      card.className = "troop-ocr-file-card";
+      const img = document.createElement("img");
+      img.src = item.previewUrl;
+      img.alt = item.name;
+      const nameEl = document.createElement("div");
+      nameEl.className = "troop-ocr-file-name";
+      nameEl.textContent = `${idx + 1}. ${item.name}`;
+      const rmBtn = document.createElement("button");
+      rmBtn.type = "button";
+      rmBtn.className = "troop-ocr-file-rm";
+      rmBtn.textContent = "×";
+      rmBtn.disabled = troopOcrRunning;
+      rmBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        URL.revokeObjectURL(item.previewUrl);
+        troopOcrFiles.splice(idx, 1);
+        renderTroopOcrFiles();
+      });
+      card.append(img, nameEl, rmBtn);
+      grid.appendChild(card);
+    });
+  }
+
+  function addTroopOcrFiles(fileList) {
+    const files = Array.from(fileList || []).filter(f => f && f.type && f.type.startsWith("image/"));
+    if (files.length === 0) return;
+    files.forEach(file => {
+      troopOcrFiles.push({
+        file,
+        name: file.name || `troops_${troopOcrFiles.length + 1}.png`,
+        previewUrl: URL.createObjectURL(file)
+      });
+    });
+    const errEl = document.getElementById("troopOcrError");
+    if (errEl) errEl.textContent = "";
+    renderTroopOcrFiles();
+  }
+
+  function clearTroopOcrFiles() {
+    troopOcrFiles.forEach(item => {
+      try { URL.revokeObjectURL(item.previewUrl); } catch (_) {}
+    });
+    troopOcrFiles = [];
+    renderTroopOcrFiles();
+  }
+
+  function openTroopOcrModal() {
+    populateTroopOcrModels();
+    updateTroopOcrApiStatus();
+    const errEl = document.getElementById("troopOcrError");
+    if (errEl) errEl.textContent = "";
+    setTroopOcrStep(1);
+    renderTroopOcrFiles();
+    openModal("troopOcrModal");
+  }
+
+  function parseTroopCountNumber(val) {
+    if (typeof val === "number" && Number.isFinite(val)) return Math.max(0, Math.round(val));
+    const raw = String(val ?? "").normalize("NFKC").replace(/[,，\s]/g, "").trim();
+    if (!raw) return 0;
+    const mM = raw.match(/^([\d.]+)\s*[mM]$/);
+    if (mM) return Math.round(Number(mM[1]) * 1000000);
+    const kM = raw.match(/^([\d.]+)\s*[kK]$/);
+    if (kM) return Math.round(Number(kM[1]) * 1000);
+    const manM = raw.match(/^([\d.]+)\s*万$/);
+    if (manM) return Math.round(Number(manM[1]) * 10000);
+    const digits = raw.replace(/[^\d.]/g, "");
+    const n = Number(digits);
+    return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+  }
+
+  function computeTroopStrengthScore(item) {
+    const tier = Number.isFinite(Number(item.tier)) && Number(item.tier) > 0 ? Number(item.tier) : 0;
+    const text = `${item.rankLabel || ""} ${item.unitName || ""}`;
+    let keywordScore = 0;
+    for (const [kw, sc] of TROOP_RANK_SCORE_TABLE) {
+      if (text.includes(kw)) {
+        keywordScore = Math.max(keywordScore, sc);
+      }
+    }
+    return tier * 1000 + keywordScore;
+  }
+
+  function normalizeTroopCategory(rawCat, unitName) {
+    const v = String(rawCat || "").trim().toLowerCase();
+    const u = String(unitName || "");
+    if (v === "inf" || v.includes("inf") || v.includes("歩") || v.includes("盾") || u.includes("歩兵") || u.includes("盾")) return "inf";
+    if (v === "cav" || v.includes("cav") || v.includes("騎") || v.includes("槍") || u.includes("騎兵") || u.includes("槍")) return "cav";
+    if (v === "arc" || v.includes("arc") || v.includes("弓") || v.includes("射") || v.includes("弩") || u.includes("弓兵") || u.includes("射手")) return "arc";
+    return "inf";
+  }
+
+  function extractTroopJsonFromText(rawText) {
+    let cleaned = String(rawText || "").trim();
+    const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fence) cleaned = fence[1].trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch (_) {
+      const fb = cleaned.indexOf("{");
+      const lb = cleaned.lastIndexOf("}");
+      if (fb >= 0 && lb > fb) return JSON.parse(cleaned.slice(fb, lb + 1));
+      const fa = cleaned.indexOf("[");
+      const la = cleaned.lastIndexOf("]");
+      if (fa >= 0 && la > fa) return { troops: JSON.parse(cleaned.slice(fa, la + 1)) };
+      throw new Error("AIの応答をJSONとして解析できませんでした");
+    }
+  }
+
+  function resizeFileToGeminiInline(file, maxDim = 1600) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        const scale = Math.min(1, maxDim / Math.max(w, h));
+        const tw = Math.max(1, Math.round(w * scale));
+        const th = Math.max(1, Math.round(h * scale));
+        const off = document.createElement("canvas");
+        off.width = tw;
+        off.height = th;
+        const ctx = off.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, tw, th);
+        const dataUrl = off.toDataURL("image/jpeg", 0.88);
+        resolve({ mimeType: "image/jpeg", data: dataUrl.split(",")[1] || "" });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("画像の読み込みに失敗しました"));
+      };
+      img.src = url;
+    });
+  }
+
+  async function callGeminiVisionForTroops(apiKey, inlineImg, onStatus) {
+    const prompt = [
+      "これはゲーム『Kingshot（キングショット）』の「部隊一覧 / 総兵力（所持兵士一覧）」画面のスクリーンショットです。",
+      "画面に表示されているすべての兵士ユニット（歩兵・騎兵・弓兵の各ランク：切り札・名誉・精鋭・熟練など）を読み取り、JSONのみを出力してください。",
+      "",
+      "【出力JSONスキーマ】",
+      "{",
+      '  "troops": [',
+      '    { "category": "inf", "tier": 10, "rankLabel": "切り札", "unitName": "切り札歩兵", "count": 185420 }',
+      "  ]",
+      "}",
+      "",
+      "【ルール】",
+      '1. category: 歩兵（盾・剣アイコン）は "inf"、騎兵（馬・槍アイコン）は "cav"、弓兵（弓矢・射手アイコン）は "arc" にしてください。',
+      "2. tier: ローマ数字（X=10, IX=9, VIII=8, VII=7, VI=6, V=5...）や Lv表記が見えればその半角整数。見えなければ 0。",
+      '3. rankLabel: 「切り札」「名誉」「精鋭」「熟練」「上級」「中級」「見習い」などランク名（わからなければ "T10" 等）。',
+      "4. unitName: 画面に表示されている部隊・兵士名称をそのまま（例: 切り札歩兵、名誉騎兵、精鋭弓兵）。",
+      "5. count: その兵種の所持人数を半角整数で出力（カンマ除去。12.3Kや1.5万等の略記は整数へ換算）。0人の行や「合計」「病院」「出撃中」などの集計行は除外してください。"
+    ].join("\n");
+
+    const sel = document.getElementById("troopOcrModelSelect");
+    const primary = (sel && sel.value ? sel.value.trim() : "") || TROOP_OCR_DEFAULT_MODELS[0];
+    const modelsToTry = [...new Set([primary, ...TROOP_OCR_DEFAULT_MODELS])];
+    let lastError = null;
+
+    for (let i = 0; i < modelsToTry.length; i++) {
+      const modelName = modelsToTry[i];
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        if (onStatus) {
+          onStatus(attempt > 1 ? `${modelName} で再試行中 (${attempt}/2)...` : `${modelName} で解析中...`);
+        }
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: inlineImg.mimeType, data: inlineImg.data } }] }],
+              generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
+            })
+          });
+          let data = null;
+          try { data = await res.json(); } catch (_) {}
+          if (!res.ok) {
+            const errMsg = data?.error?.message || `HTTP ${res.status}`;
+            const retryable = res.status === 429 || res.status === 503 || /high demand|overloaded|unavailable|resource exhausted/i.test(errMsg);
+            if (retryable) {
+              lastError = new Error(`[${modelName}] ${errMsg}`);
+              if (attempt < 2) {
+                await new Promise(r => setTimeout(r, 1400));
+                continue;
+              }
+              break;
+            }
+            throw new Error(`[${modelName}] ${errMsg}`);
+          }
+          const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          if (!rawText) throw new Error(`[${modelName}] 応答が空でした`);
+          const parsed = extractTroopJsonFromText(rawText);
+          const troops = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.troops) ? parsed.troops : [];
+          return { troops, modelUsed: modelName };
+        } catch (err) {
+          lastError = err;
+          if (i < modelsToTry.length - 1 && /429|503|high demand|overloaded|unavailable|not found/i.test(err.message || "")) {
+            break;
+          }
+          if (attempt >= 2) throw err;
+        }
+      }
+    }
+    throw lastError || new Error("AI解析に失敗しました");
+  }
+
+  function sortTroopOcrItemsInPlace() {
+    troopOcrItems.sort((a, b) => {
+      const sa = computeTroopStrengthScore(a);
+      const sb = computeTroopStrengthScore(b);
+      if (sb !== sa) return sb - sa;
+      return (b.count || 0) - (a.count || 0);
+    });
+  }
+
+  function applyTroopOcrPreset(mode) {
+    sortTroopOcrItemsInPlace();
+    const seenPerCat = { inf: 0, cav: 0, arc: 0 };
+    troopOcrItems.forEach(item => {
+      const idxInCat = seenPerCat[item.category] || 0;
+      seenPerCat[item.category] = idxInCat + 1;
+      if (mode === "top1") item.checked = idxInCat === 0;
+      else if (mode === "top2") item.checked = idxInCat < 2;
+      else if (mode === "all") item.checked = true;
+      else item.checked = false;
+    });
+    renderTroopOcrStep2();
+  }
+
+  function addManualTroopOcrRow() {
+    troopOcrItems.push({
+      uid: `tr_${troopOcrSeq++}`,
+      category: "arc",
+      tier: 10,
+      rankLabel: "切り札",
+      unitName: "手動追加部隊",
+      count: 0,
+      checked: true
+    });
+    renderTroopOcrStep2();
+  }
+
+  function renderTroopOcrTotalsOnly() {
+    const totalsBar = document.getElementById("troopOcrTotalsBar");
+    if (!totalsBar) return;
+    const sums = { inf: 0, cav: 0, arc: 0 };
+    troopOcrItems.forEach(item => {
+      if (item.checked) {
+        sums[item.category] = (sums[item.category] || 0) + (Math.max(0, Math.round(Number(item.count) || 0)));
+      }
+    });
+    totalsBar.innerHTML = `
+      <div class="troop-ocr-total-box">
+        <span class="troop-ocr-total-lbl">🛡️ 歩兵 選択合計</span>
+        <span class="troop-ocr-total-val">${sums.inf.toLocaleString()}</span>
+      </div>
+      <div class="troop-ocr-total-box">
+        <span class="troop-ocr-total-lbl">🐎 騎兵 選択合計</span>
+        <span class="troop-ocr-total-val">${sums.cav.toLocaleString()}</span>
+      </div>
+      <div class="troop-ocr-total-box" style="border-color:rgba(245,158,11,0.5);">
+        <span class="troop-ocr-total-lbl">🏹 弓兵 選択合計</span>
+        <span class="troop-ocr-total-val" style="color:var(--accent);">${sums.arc.toLocaleString()}</span>
+      </div>
+    `;
+  }
+
+  function renderTroopOcrStep2() {
+    const grid = document.getElementById("troopOcrCatGrid");
+    if (!grid) return;
+    sortTroopOcrItemsInPlace();
+    renderTroopOcrTotalsOnly();
+
+    const catMeta = [
+      { key: "inf", title: "🛡️ 歩兵（強い順）", color: "#93c5fd" },
+      { key: "cav", title: "🐎 騎兵（強い順）", color: "#86efac" },
+      { key: "arc", title: "🏹 弓兵（強い順）", color: "#fcd34d" }
+    ];
+
+    grid.innerHTML = "";
+    catMeta.forEach(cat => {
+      const col = document.createElement("div");
+      col.className = "troop-ocr-cat-col";
+
+      const list = troopOcrItems.filter(it => it.category === cat.key);
+      const head = document.createElement("div");
+      head.className = "troop-ocr-cat-head";
+      head.style.color = cat.color;
+      head.innerHTML = `<span>${cat.title}</span><span style="font-size:0.72rem; color:var(--muted);">${list.length}種</span>`;
+      col.appendChild(head);
+
+      if (list.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.cssText = "font-size:0.75rem; color:var(--muted); padding:8px 4px; text-align:center;";
+        empty.textContent = "検出なし";
+        col.appendChild(empty);
+      } else {
+        list.forEach((item, idx) => {
+          const card = document.createElement("div");
+          card.className = `troop-ocr-unit-card ${item.checked ? "checked" : "unchecked"}`;
+
+          const top = document.createElement("div");
+          top.className = "troop-ocr-unit-top";
+
+          const chkLabel = document.createElement("label");
+          chkLabel.className = "troop-ocr-unit-check";
+          const chk = document.createElement("input");
+          chk.type = "checkbox";
+          chk.checked = !!item.checked;
+          chk.addEventListener("change", () => {
+            item.checked = chk.checked;
+            card.className = `troop-ocr-unit-card ${item.checked ? "checked" : "unchecked"}`;
+            renderTroopOcrTotalsOnly();
+          });
+
+          const nameSpan = document.createElement("span");
+          nameSpan.textContent = item.unitName || item.rankLabel || `ランク${idx + 1}`;
+          nameSpan.style.cssText = "overflow:hidden; text-overflow:ellipsis; white-space:nowrap;";
+          chkLabel.append(chk, nameSpan);
+
+          const badge = document.createElement("span");
+          badge.className = "troop-ocr-tier-badge";
+          badge.textContent = item.tier > 0 ? `T${item.tier}` : (item.rankLabel || `#${idx + 1}`);
+
+          top.append(chkLabel, badge);
+
+          const inputs = document.createElement("div");
+          inputs.className = "troop-ocr-unit-inputs";
+
+          const countInp = document.createElement("input");
+          countInp.type = "number";
+          countInp.min = "0";
+          countInp.step = "100";
+          countInp.value = String(item.count || 0);
+          countInp.title = "兵数（手修正できます）";
+          countInp.addEventListener("input", () => {
+            const v = Number(countInp.value);
+            item.count = Number.isFinite(v) && v >= 0 ? Math.round(v) : 0;
+            renderTroopOcrTotalsOnly();
+          });
+
+          const catSel = document.createElement("select");
+          catSel.title = "兵種を変更";
+          [
+            ["inf", "歩兵"],
+            ["cav", "騎兵"],
+            ["arc", "弓兵"]
+          ].forEach(([val, lbl]) => {
+            const o = document.createElement("option");
+            o.value = val;
+            o.textContent = lbl;
+            catSel.appendChild(o);
+          });
+          catSel.value = item.category;
+          catSel.addEventListener("change", () => {
+            item.category = catSel.value;
+            renderTroopOcrStep2();
+          });
+
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "troop-ocr-unit-del";
+          delBtn.textContent = "×";
+          delBtn.title = "この行を削除";
+          delBtn.addEventListener("click", () => {
+            troopOcrItems = troopOcrItems.filter(x => x.uid !== item.uid);
+            renderTroopOcrStep2();
+          });
+
+          inputs.append(countInp, catSel, delBtn);
+          card.append(top, inputs);
+          col.appendChild(card);
+        });
+      }
+
+      grid.appendChild(col);
+    });
+  }
+
+  async function runTroopOcrParse() {
+    if (troopOcrRunning) return;
+    const apiKey = getBearGeminiApiKey();
+    const errEl = document.getElementById("troopOcrError");
+    const progEl = document.getElementById("troopOcrProgress");
+    const runBtn = document.getElementById("troopOcrRunBtn");
+    const clearBtn = document.getElementById("troopOcrClearFilesBtn");
+
+    if (!apiKey) {
+      errEl.textContent = "AI Studio APIキーが未設定です。「⚙️ APIキー設定」から登録してください。";
+      return;
+    }
+    if (troopOcrFiles.length === 0) {
+      errEl.textContent = "部隊一覧のスクリーンショットを1枚以上選択してください。";
+      return;
+    }
+
+    const modelSel = document.getElementById("troopOcrModelSelect");
+    if (modelSel && modelSel.value) {
+      try { localStorage.setItem("ks_gemini_model", modelSel.value); } catch (_) {}
+    }
+
+    troopOcrRunning = true;
+    errEl.textContent = "";
+    progEl.classList.add("show");
+    progEl.textContent = "画像を準備中...";
+    runBtn.disabled = true;
+    clearBtn.disabled = true;
+
+    try {
+      const mergedMap = new Map();
+      for (let i = 0; i < troopOcrFiles.length; i++) {
+        const f = troopOcrFiles[i];
+        progEl.textContent = `画像 ${i + 1} / ${troopOcrFiles.length}（${f.name}）を読み込み中...`;
+        const inlineImg = await resizeFileToGeminiInline(f.file, 1600);
+        const { troops, modelUsed } = await callGeminiVisionForTroops(apiKey, inlineImg, (msg) => {
+          progEl.textContent = `画像 ${i + 1} / ${troopOcrFiles.length}（${f.name}）：${msg}`;
+        });
+        progEl.textContent = `画像 ${i + 1} / ${troopOcrFiles.length}：${troops.length}件検出（${modelUsed}）`;
+
+        troops.forEach(raw => {
+          const count = parseTroopCountNumber(raw?.count);
+          if (count <= 0) return;
+          const unitName = String(raw?.unitName || raw?.rankLabel || "").trim();
+          const rankLabel = String(raw?.rankLabel || "").trim();
+          const category = normalizeTroopCategory(raw?.category, unitName || rankLabel);
+          const tierNum = Number.isFinite(Number(raw?.tier)) && Number(raw.tier) > 0 ? Math.round(Number(raw.tier)) : 0;
+
+          const dedupeKey = `${category}__${tierNum}__${(rankLabel || unitName).normalize("NFKC").toLowerCase()}`;
+          if (!mergedMap.has(dedupeKey)) {
+            mergedMap.set(dedupeKey, {
+              uid: `tr_${troopOcrSeq++}`,
+              category,
+              tier: tierNum,
+              rankLabel: rankLabel || (tierNum > 0 ? `T${tierNum}` : ""),
+              unitName: unitName || (rankLabel ? `${rankLabel}${category === "inf" ? "歩兵" : category === "cav" ? "騎兵" : "弓兵"}` : "部隊"),
+              count,
+              checked: false
+            });
+          } else {
+            const prev = mergedMap.get(dedupeKey);
+            if (count > prev.count) prev.count = count;
+          }
+        });
+      }
+
+      troopOcrItems = Array.from(mergedMap.values());
+      if (troopOcrItems.length === 0) {
+        throw new Error("画像から兵士数を読み取れませんでした。歩兵・騎兵・弓兵の人数がはっきり写ったスクショでお試しください。");
+      }
+
+      // 既定：各兵種の最強ランク（切り札等）のみチェックON
+      applyTroopOcrPreset("top1");
+      setTroopOcrStep(2);
+      showToast(`🤖 ${troopOcrItems.length}種類の部隊を読み取りました！使うランクを選んで反映してください。`, "ok");
+    } catch (err) {
+      errEl.textContent = `解析エラー：${err?.message || err}`;
+    } finally {
+      troopOcrRunning = false;
+      progEl.classList.remove("show");
+      renderTroopOcrFiles();
+    }
+  }
+
+  function applyTroopOcrTotalsToStep1() {
+    const sums = { inf: 0, cav: 0, arc: 0 };
+    troopOcrItems.forEach(item => {
+      if (item.checked) {
+        sums[item.category] = (sums[item.category] || 0) + Math.max(0, Math.round(Number(item.count) || 0));
+      }
+    });
+    document.getElementById("infTotal").value = sums.inf;
+    document.getElementById("cavTotal").value = sums.cav;
+    document.getElementById("arcTotal").value = sums.arc;
+    recalc();
+    closeModal("troopOcrModal");
+    showToast(`✅ STEP 1へ入力しました（歩:${sums.inf.toLocaleString()} / 騎:${sums.cav.toLocaleString()} / 弓:${sums.arc.toLocaleString()}）`, "ok");
+  }
+
+  // イベントバインド（ドロップ・ファイル選択・Ctrl+V貼付・解析実行）
+  (function initTroopOcrEvents() {
+    const dropZone = document.getElementById("troopOcrDropZone");
+    const fileInput = document.getElementById("troopOcrFileInput");
+    const clearBtn = document.getElementById("troopOcrClearFilesBtn");
+    const runBtn = document.getElementById("troopOcrRunBtn");
+    const modal = document.getElementById("troopOcrModal");
+
+    if (dropZone && fileInput) {
+      dropZone.addEventListener("click", () => {
+        if (troopOcrRunning) return;
+        fileInput.value = "";
+        fileInput.click();
+      });
+      dropZone.addEventListener("keydown", (e) => {
+        if ((e.key === "Enter" || e.key === " ") && !troopOcrRunning) {
+          e.preventDefault();
+          fileInput.value = "";
+          fileInput.click();
+        }
+      });
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+      });
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+      });
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        if (troopOcrRunning) return;
+        addTroopOcrFiles(e.dataTransfer?.files);
+      });
+      fileInput.addEventListener("change", (e) => {
+        addTroopOcrFiles(e.target.files);
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        if (!troopOcrRunning) clearTroopOcrFiles();
+      });
+    }
+    if (runBtn) {
+      runBtn.addEventListener("click", runTroopOcrParse);
+    }
+
+    document.addEventListener("paste", (e) => {
+      if (!modal || !modal.classList.contains("open")) return;
+      const step1 = document.getElementById("troopOcrStep1Pane");
+      if (!step1 || step1.style.display === "none" || troopOcrRunning) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const pasted = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.startsWith("image/")) {
+          const f = items[i].getAsFile();
+          if (f) pasted.push(f);
+        }
+      }
+      if (pasted.length > 0) {
+        e.preventDefault();
+        addTroopOcrFiles(pasted);
+        showToast(`📋 画像${pasted.length}枚を貼り付けました`, "ok");
+      }
+    });
   })();
 </script>
 </body>
