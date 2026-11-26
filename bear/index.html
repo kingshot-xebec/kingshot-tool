@@ -13,8 +13,8 @@
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png" />
   <!-- Firebase SDK (Compat v10) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
   <script src="../assets/firebase-init.js"></script>
   <link rel="stylesheet" href="../assets/common.css" />
   <style>
@@ -2317,10 +2317,11 @@
     if (mobileCardsEl) mobileCardsEl.innerHTML = mobileHtml;
   }
 
-  function copyFormation() {
+  async function copyFormation() {
     const header = `🐻 巨熊狩猟 最適編成表\n`;
     const text = header + (window._lastExportLines || []).join("\n");
-    navigator.clipboard.writeText(text).then(() => showToast("編成表をクリップボードにコピーしました！"));
+    const ok = await RBNSuite.safeCopyText(text);
+    showToast(ok ? "編成表をクリップボードにコピーしました！" : "コピーに失敗しました（ブラウザ権限を確認してください）", ok ? "ok" : "error");
   }
 
   // ==========================================
@@ -2443,14 +2444,15 @@
     openModal("dataModal");
   }
 
-  function exportMasterJson() {
+  async function exportMasterJson() {
     normalizeMasterConsistency(masterData, true);
     const str = JSON.stringify(masterData, null, 2);
     document.getElementById("jsonArea").value = str;
-    navigator.clipboard.writeText(str).then(() => showToast("マスタJSONをコピーしました！"));
+    const ok = await RBNSuite.safeCopyText(str);
+    showToast(ok ? "マスタJSONをコピーしました！" : "テキスト欄のJSONを手動でコピーしてください", ok ? "ok" : "warn");
   }
 
-  function copyAiUpdatePrompt() {
+  async function copyAiUpdatePrompt() {
     normalizeMasterConsistency(masterData, true);
     const currentJson = JSON.stringify(masterData, null, 2);
     const promptText = `あなたはスマホゲーム「キングショット（KingShot）」の巨熊狩猟（Bear Trap）データアナリストです。
@@ -2475,9 +2477,11 @@
 【現在のマスターデータJSON】
 ${currentJson}`;
 
-    navigator.clipboard.writeText(promptText).then(() => {
-      showToast("🤖 AI更新用プロンプト＋現行JSONをコピーしました！");
-    });
+    const ok = await RBNSuite.safeCopyText(promptText);
+    showToast(
+      ok ? "🤖 AI更新用プロンプト＋現行JSONをコピーしました！" : "コピーに失敗しました（ブラウザ権限を確認してください）",
+      ok ? "ok" : "error"
+    );
   }
 
   function applyMasterUpdate(incoming, smartMerge) {
@@ -2551,8 +2555,13 @@ ${currentJson}`;
 
   function openModal(id) { document.getElementById(id).classList.add("open"); }
   function closeModal(id) { document.getElementById(id).classList.remove("open"); }
-  function showToast(msg) {
+  function showToast(msg, type) {
+    if (window.RBNSuite && typeof RBNSuite.showToast === "function") {
+      RBNSuite.showToast(msg, type || "ok");
+      return;
+    }
     const t = document.getElementById("toast");
+    if (!t) return;
     t.textContent = msg;
     t.classList.add("show");
     setTimeout(() => t.classList.remove("show"), 2600);
@@ -2797,6 +2806,42 @@ ${currentJson}`;
       alert("Firebase書き込みエラー: " + err.message);
     });
   }
+
+  // 設定モーダル内のリンク入力を「開く ↗」へ即時反映
+  [
+    ["setLinkMap", "openLinkMap"],
+    ["setLinkBear", "openLinkBear"],
+    ["setLinkNotice", "openLinkNotice"]
+  ].forEach(([inpId, linkId]) => {
+    const inp = document.getElementById(inpId);
+    const link = document.getElementById(linkId);
+    if (inp && link) {
+      inp.addEventListener("input", () => {
+        link.href = inp.value.trim() || "#";
+      });
+    }
+  });
+
+  // 全モーダルで ESC キー閉じ対応
+  RBNSuite.enableModalEscapeClose(() => {
+    ["appSettingsModal", "inspectModal", "tierModal", "heroEditModal", "dataModal"].forEach(closeModal);
+  });
+
+  // 別タブでの共通設定変更・オンライン/オフライン切替を即時同期
+  RBNSuite.watchSharedSettings((latest) => {
+    const prevDbUrl = sharedSettings.firebase.databaseUrl;
+    sharedSettings = latest;
+    FIREBASE_CONFIG.databaseURL = latest.firebase.databaseUrl;
+    syncSettingsModalUI();
+    if (prevDbUrl !== latest.firebase.databaseUrl) {
+      initFirebase();
+    }
+  });
+
+  RBNSuite.watchConnectivity({
+    onOffline: () => updateSyncBadge(false),
+    onOnline: () => initFirebase()
+  });
 
   window.addEventListener("DOMContentLoaded", initApp);
 </script>

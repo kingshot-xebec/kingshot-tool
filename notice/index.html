@@ -2290,18 +2290,13 @@
 
         const copyBtn = box.querySelector('.copy-chart-btn');
         copyBtn.addEventListener('click', async () => {
-          try {
-            await navigator.clipboard.writeText(rawContent);
-          } catch {
-            const tmp = document.createElement('textarea');
-            tmp.value = rawContent;
-            document.body.appendChild(tmp);
-            tmp.select();
-            document.execCommand('copy');
-            document.body.removeChild(tmp);
-          }
+          const copied = await RBNSuite.safeCopyText(rawContent);
           const orig = copyBtn.textContent;
-          copyBtn.textContent = '✅ 現物コピー完了！';
+          copyBtn.textContent = copied ? '✅ 現物コピー完了！' : '⚠️ コピー失敗';
+          RBNSuite.showToast(
+            copied ? `「${chart.title}」をコピーしました` : 'コピーに失敗しました（手動コピーをお試しください）',
+            copied ? 'ok' : 'error'
+          );
           setTimeout(() => {
             copyBtn.textContent = orig;
           }, 1800);
@@ -2947,7 +2942,10 @@
       } catch {}
     }
 
-    const savedUrl = localStorage.getItem('ks_firebase_url') || EMBEDDED_FIREBASE_URL;
+    const savedUrl =
+      localStorage.getItem('ks_firebase_url') ||
+      (sharedObj?.firebase?.databaseUrl ? RBNSuite.getNoticeRestBaseUrl(sharedObj.firebase.databaseUrl) : '') ||
+      EMBEDDED_FIREBASE_URL;
     const savedBearDate = localStorage.getItem('ks_bear_base_date') || '2026-11-22';
     const savedBearText = localStorage.getItem('ks_bear_text') || '熊罠 21時 22時';
     const savedDict = localStorage.getItem('ks_event_dict') || DEFAULT_EVENT_DICT;
@@ -3042,6 +3040,10 @@
       ? '✅ 設定を保存し、Firebase経由で全端末・共有メンバーへ同期しました！'
       : '⚠️ ブラウザ内に保存しました（Firebase同期はURL・ルールを確認してください）';
     settingsStatusMsg.className = `status-msg ${cloudOk ? 'status-ok' : 'status-error'}`;
+    RBNSuite.showToast(
+      cloudOk ? '✅ 設定を保存＆Firebase同期しました' : '⚠️ ローカル保存済（Firebase接続を確認）',
+      cloudOk ? 'ok' : 'warn'
+    );
   });
 
   charLimitInput.addEventListener('change', () => {
@@ -3354,12 +3356,7 @@ ${learnedExamples}`;
     const dateKey = targetDateInput.value || toDateInputString(getSelectedTargetDate());
     const dateLabel = getTargetDateFormatted();
 
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      resultText.select();
-      document.execCommand('copy');
-    }
+    const copied = await RBNSuite.safeCopyText(text);
 
     const cloudOk = await saveHistoryEntryToCloud(dateKey, {
       text: text,
@@ -3370,9 +3367,39 @@ ${learnedExamples}`;
     const originalText = saveCopyBtn.textContent;
     saveCopyBtn.textContent = cloudOk ? '✅ 確定保存＆コピー完了！' : '✅ コピー＆ローカル保存完了！';
     showStatus(`${dateKey} の確定通知文を学習データに保存しました（次回以降の生成に自動活用されます）。`, 'ok');
+    RBNSuite.showToast(
+      copied
+        ? (cloudOk ? '確定保存＆コピー完了しました！' : 'コピー＆ローカル保存しました（オフライン）')
+        : '保存しました（コピーは手動でお試しください）',
+      copied ? (cloudOk ? 'ok' : 'warn') : 'warn'
+    );
     setTimeout(() => {
       saveCopyBtn.textContent = originalText;
     }, 2200);
+  });
+
+  // 別タブでの共通設定変更・オンライン/オフライン状態を即時同期
+  RBNSuite.watchSharedSettings((latest) => {
+    if (latest.links?.cityMapUrl) cityMapUrlInput.value = latest.links.cityMapUrl;
+    if (latest.links?.bearNavUrl) bearSimUrlInput.value = latest.links.bearNavUrl;
+    if (latest.ai?.studioApiKey && !apiKeyInput.value.trim()) {
+      apiKeyInput.value = latest.ai.studioApiKey;
+    }
+    if (latest.firebase?.databaseUrl && !localStorage.getItem('ks_firebase_url')) {
+      firebaseUrlInput.value = RBNSuite.getNoticeRestBaseUrl(latest.firebase.databaseUrl);
+    }
+    if (openCityMapLink) openCityMapLink.href = cityMapUrlInput.value || DEFAULT_CITY_MAP_URL;
+    if (openBearSimLink) openBearSimLink.href = bearSimUrlInput.value || DEFAULT_BEAR_SIM_URL;
+    if (headerCityMapLink) headerCityMapLink.href = cityMapUrlInput.value || DEFAULT_CITY_MAP_URL;
+    if (headerBearSimLink) headerBearSimLink.href = bearSimUrlInput.value || DEFAULT_BEAR_SIM_URL;
+    if (noticeSharedJsonArea) {
+      noticeSharedJsonArea.value = JSON.stringify(getSharedConfigPayload(), null, 2);
+    }
+  });
+
+  RBNSuite.watchConnectivity({
+    onOffline: () => updateSyncBadge(false, '⚠️ オフライン（ローカル動作）'),
+    onOnline: () => syncFromCloud()
   });
 
   init();

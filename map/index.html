@@ -563,6 +563,21 @@
     body.mobile-mode .hide-on-mobile {
       display: none !important;
     }
+    body.mobile-mode.view-only .toolbar.edit-only {
+      display: none;
+    }
+    body.mobile-mode .status-msg {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    body.mobile-mode .header-actions {
+      gap: 4px;
+    }
+    body.mobile-mode .header-actions button {
+      padding: 5px 8px;
+      font-size: 11.5px;
+    }
     body.mobile-mode .toolbar {
       padding: 4px 6px;
       gap: 4px;
@@ -1179,6 +1194,7 @@
       renderRoster();
       syncToolbar();
       render();
+      requestAnimationFrame(() => resizeCanvas());
     }
 
     function saveToCloud() {
@@ -1196,6 +1212,7 @@
       cloudRoomRef.set(payload).catch((err) => {
         statusMsg.classList.remove("ok");
         statusMsg.textContent = "クラウド保存エラー（パスコードやルールを確認）：" + err.message;
+        RBNSuite.showToast("⚠️ クラウド保存に失敗しました（ローカルには保存済）", "error", 3200);
       });
     }
 
@@ -1468,6 +1485,7 @@
       settingsModalMsg.textContent = "✅ 共通設定を保存しました。";
       statusMsg.classList.add("ok");
       statusMsg.textContent = "共通設定（リンク・Firebase・AI API）を保存しました。";
+      RBNSuite.showToast("✅ 共通設定を保存しました", "ok");
     });
 
     exportSharedJsonBtn.addEventListener("click", async () => {
@@ -1982,6 +2000,7 @@
 
       syncToolbar();
       render();
+      requestAnimationFrame(() => resizeCanvas());
     }
 
     function openPinModal() {
@@ -3007,19 +3026,15 @@
     copyExcelBtn.addEventListener("click", async () => {
       if (!isEditable) return;
       const tsv = buildExcelTsvText();
-      try {
-        await navigator.clipboard.writeText(tsv);
+      const copied = await RBNSuite.safeCopyText(tsv);
+      if (copied) {
         statusMsg.classList.add("ok");
         statusMsg.textContent = "1〜100位＋102行目〜施設をExcel形式でコピーしました。";
-      } catch (_) {
-        const tempArea = document.createElement("textarea");
-        tempArea.value = tsv;
-        document.body.appendChild(tempArea);
-        tempArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(tempArea);
-        statusMsg.classList.add("ok");
-        statusMsg.textContent = "1〜100位＋施設をクリップボードへコピーしました。";
+        RBNSuite.showToast("📋 Excel形式でコピーしました", "ok");
+      } else {
+        statusMsg.classList.remove("ok");
+        statusMsg.textContent = "クリップボードへのコピーに失敗しました。CSV保存をご利用ください。";
+        RBNSuite.showToast("⚠️ コピーに失敗しました（CSV保存をお試しください）", "error");
       }
     });
 
@@ -3720,6 +3735,34 @@
     if (!loadFromStorage()) {
       resortByPower();
     }
+
+    // 全モーダルで ESC キー閉じ対応
+    RBNSuite.enableModalEscapeClose(() => {
+      settingsModal.classList.remove("open");
+      centerModal.classList.remove("open");
+      pinModal.classList.remove("open");
+      backupModal.classList.remove("open");
+      importModal.classList.remove("open");
+    });
+
+    // 別タブでの共通設定変更・オンライン/オフライン状態を即時同期
+    RBNSuite.watchSharedSettings((latest) => {
+      const prevDbUrl = sharedSettings.firebase.databaseUrl;
+      sharedSettings = latest;
+      firebaseConfig.databaseURL = latest.firebase.databaseUrl;
+      syncSettingsModalInputs();
+      if (prevDbUrl !== latest.firebase.databaseUrl) {
+        initFirebaseCloud();
+      }
+    });
+
+    RBNSuite.watchConnectivity({
+      onOffline: () => {
+        cloudBadge.textContent = "☁️ オフライン（ローカル）";
+        cloudBadge.classList.remove("online");
+      },
+      onOnline: () => initFirebaseCloud()
+    });
 
     syncSettingsModalInputs();
     updateCenterBaseBadge();

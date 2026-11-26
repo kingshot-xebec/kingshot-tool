@@ -270,6 +270,76 @@
     }
   }
 
+  let toastHideTimer = null;
+
+  function showToast(message, type, durationMs) {
+    const text = String(message || "").trim();
+    if (!text || !global.document || !global.document.body) return;
+    const tone = ["ok", "info", "warn", "error"].includes(type) ? type : "ok";
+    const ms = Number(durationMs) > 0 ? Number(durationMs) : 2600;
+
+    let el = global.document.getElementById("rbnGlobalToast");
+    if (!el) {
+      el = global.document.createElement("div");
+      el.id = "rbnGlobalToast";
+      el.className = "rbn-toast";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
+      global.document.body.appendChild(el);
+    }
+
+    el.textContent = text;
+    el.className = `rbn-toast rbn-toast--${tone} show`;
+    if (toastHideTimer) {
+      global.clearTimeout(toastHideTimer);
+    }
+    toastHideTimer = global.setTimeout(function () {
+      el.classList.remove("show");
+    }, ms);
+  }
+
+  function watchSharedSettings(onChange, options) {
+    if (typeof onChange !== "function") return;
+    global.addEventListener("storage", function (ev) {
+      if (!ev || !ev.key) return;
+      if (
+        ev.key === SHARED_SETTINGS_KEY ||
+        ev.key === "ks_gemini_api_key" ||
+        ev.key === "ks_firebase_url" ||
+        ev.key === "ks_city_map_url" ||
+        ev.key === "ks_bear_sim_url"
+      ) {
+        try {
+          const latest = loadSharedSettings(options);
+          onChange(latest, ev);
+        } catch (err) {
+          console.warn("[RBNSuite] 別タブ設定同期エラー:", err);
+        }
+      }
+    });
+  }
+
+  function watchConnectivity(callbacks) {
+    const cbs = callbacks || {};
+    global.addEventListener("offline", function () {
+      showToast("⚠️ オフラインになりました（ローカル保存で継続動作）", "warn", 3200);
+      if (typeof cbs.onOffline === "function") cbs.onOffline();
+    });
+    global.addEventListener("online", function () {
+      showToast("🟢 オンラインに復帰しました", "info", 2400);
+      if (typeof cbs.onOnline === "function") cbs.onOnline();
+    });
+  }
+
+  function enableModalEscapeClose(closeFn) {
+    if (typeof closeFn !== "function") return;
+    global.document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        closeFn(e);
+      }
+    });
+  }
+
   function registerPwaServiceWorker() {
     if (!global.navigator || !("serviceWorker" in global.navigator)) return;
     const proto = global.location && global.location.protocol;
@@ -316,6 +386,10 @@
     saveSharedSettings,
     getFirebaseConfig,
     initRealtimeDatabase,
-    safeCopyText
+    safeCopyText,
+    showToast,
+    watchSharedSettings,
+    watchConnectivity,
+    enableModalEscapeClose
   });
 })(window);
