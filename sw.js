@@ -1,9 +1,9 @@
 /**
- * ks tool PWA Service Worker（Network-First・Firebase非干渉）
+ * ks tool PWA Service Worker（Network-First + HTTPキャッシュ回避・Firebase非干渉）
  * - 外部通信（Firebase Realtime Database・Firebase SDK・Gemini API等）は一切キャッシュせず素通りします。
- * - 同一オリジンのHTML/CSS/JS/アイコンのみネットワーク優先で取得し、オフライン時のみキャッシュから返します。
+ * - HTML/CSS/JS は常にサーバーから最新（cache: "no-store"）を優先取得し、オフライン時のみキャッシュを返します。
  */
-const CACHE_NAME = "ks-tool-pwa-v1";
+const CACHE_NAME = "ks-tool-pwa-v2";
 const PRECACHE_URLS = [
   "./",
   "./index.html",
@@ -28,7 +28,7 @@ self.addEventListener("install", (event) => {
       .then((cache) =>
         Promise.allSettled(
           PRECACHE_URLS.map((url) =>
-            cache.add(new Request(url, { cache: "reload" })).catch(() => {})
+            cache.add(new Request(url, { cache: "no-store" })).catch(() => {})
           )
         )
       )
@@ -57,8 +57,17 @@ self.addEventListener("fetch", (event) => {
   // Firebase・Google API・外部CDN等は一切干渉せず素通り
   if (url.origin !== self.location.origin) return;
 
+  const isCodeOrDoc =
+    req.mode === "navigate" ||
+    /\.(?:html?|css|js|webmanifest)$/i.test(url.pathname) ||
+    url.pathname.endsWith("/");
+
+  const fetchReq = isCodeOrDoc
+    ? new Request(req.url, { method: "GET", cache: "no-store", credentials: "same-origin" })
+    : req;
+
   event.respondWith(
-    fetch(req)
+    fetch(fetchReq)
       .then((res) => {
         if (res && res.ok && res.type === "basic") {
           const clone = res.clone();

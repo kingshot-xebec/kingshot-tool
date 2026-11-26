@@ -362,9 +362,21 @@
     } catch (_) {}
 
     global.addEventListener("load", function () {
-      global.navigator.serviceWorker.register(swUrl).catch(function (err) {
-        console.warn("[RBNSuite] Service Worker 登録スキップ:", err);
-      });
+      global.navigator.serviceWorker
+        .register(swUrl, { updateViaCache: "none" })
+        .then(function (reg) {
+          if (reg && typeof reg.update === "function") {
+            reg.update().catch(function () {});
+            global.document.addEventListener("visibilitychange", function () {
+              if (global.document.visibilityState === "visible") {
+                reg.update().catch(function () {});
+              }
+            });
+          }
+        })
+        .catch(function (err) {
+          console.warn("[RBNSuite] Service Worker 登録スキップ:", err);
+        });
     });
   }
 
