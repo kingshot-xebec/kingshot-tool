@@ -809,12 +809,22 @@
 </head>
 <body class="view-only">
   <header class="app-header">
-    <div class="brand-block">
+    <div class="rbn-topbar">
       <nav class="rbn-quick-nav" aria-label="ツール切替">
         <a class="rbn-top-link rbn-top-link--compact" href="../" title="トップメニューへ戻る">🏠 トップ</a>
         <a id="headerBearNavLink" class="rbn-top-link rbn-top-link--compact" href="../bear/" title="RBN 熊編成ナビを開く">🐻 熊編成</a>
         <a id="headerNoticeGenLink" class="rbn-top-link rbn-top-link--compact" href="../notice/" title="RBN 同盟通知ジェネレーターを開く">📢 通知作成</a>
       </nav>
+      <div class="rbn-topbar-controls">
+        <div class="rbn-view-toggle" role="group" aria-label="表示レイアウトの切り替え">
+          <button id="uiModeMobileBtn" class="rbn-view-toggle-btn" type="button">📱 スマホ</button>
+          <button id="uiModePcBtn" class="rbn-view-toggle-btn" type="button">💻 PC</button>
+        </div>
+        <button id="openSettingsModalBtn" class="rbn-settings-pill" type="button">⚙️ 設定</button>
+      </div>
+    </div>
+
+    <div class="brand-block">
       <h3 class="brand-title">🗺️ RBN 都市マップ（40×40）</h3>
       <div id="centerBaseBadge" class="info">中心基準 X:386, Y:792</div>
       <div id="modeBadge" class="mode-badge">🔒 閲覧モード</div>
@@ -827,8 +837,6 @@
       <div id="zoomInfo" class="info hide-on-mobile">倍率：100%</div>
       <button id="resetBtn" type="button">表示リセット</button>
       <button id="exportPngBtn" class="success" type="button">PNG保存</button>
-      <button id="uiModeToggleBtn" class="ui-switch-btn" type="button" title="PC表示とスマホ表示を手動切り替え">スマホUIへ切替</button>
-      <button id="openSettingsModalBtn" class="settings-btn" type="button">⚙️ 設定</button>
     </div>
   </header>
 
@@ -1372,7 +1380,8 @@
 
     const resetBtn = document.getElementById("resetBtn");
     const exportPngBtn = document.getElementById("exportPngBtn");
-    const uiModeToggleBtn = document.getElementById("uiModeToggleBtn");
+    const uiModeMobileBtn = document.getElementById("uiModeMobileBtn");
+    const uiModePcBtn = document.getElementById("uiModePcBtn");
     const mobileViewTabs = document.getElementById("mobileViewTabs");
 
     const facilityTypeSelect = document.getElementById("facilityTypeSelect");
@@ -2062,7 +2071,8 @@
 
       hideCoordPopup();
       document.body.classList.toggle("mobile-mode", isMobile);
-      uiModeToggleBtn.textContent = isMobile ? "💻 PC UIへ切替" : "📱 スマホUIへ切替";
+      if (uiModeMobileBtn) uiModeMobileBtn.classList.toggle("active", isMobile);
+      if (uiModePcBtn) uiModePcBtn.classList.toggle("active", !isMobile);
 
       if (isMobile) {
         setMobileTab(mobileTab);
@@ -2097,10 +2107,12 @@
       requestAnimationFrame(() => resizeCanvas());
     }
 
-    uiModeToggleBtn.addEventListener("click", () => {
-      const nextMode = currentUiMode === "mobile" ? "pc" : "mobile";
-      applyUiMode(nextMode, true);
-    });
+    if (uiModeMobileBtn) {
+      uiModeMobileBtn.addEventListener("click", () => applyUiMode("mobile", true));
+    }
+    if (uiModePcBtn) {
+      uiModePcBtn.addEventListener("click", () => applyUiMode("pc", true));
+    }
 
     mobileViewTabs.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-tab]");

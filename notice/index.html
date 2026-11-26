@@ -1157,19 +1157,24 @@
 
 <div class="container">
   <header>
-    <div class="rbn-header-title-row">
+    <div class="rbn-topbar">
       <nav class="rbn-quick-nav" aria-label="ツール切替">
         <a class="rbn-top-link" href="../" title="トップメニューへ戻る">🏠 トップ</a>
         <a id="header-city-map-link" class="rbn-top-link" href="../map/" title="RBN 都市マップを開く">🗺️ マップ</a>
         <a id="header-bear-sim-link" class="rbn-top-link" href="../bear/" title="RBN 熊編成ナビを開く">🐻 熊編成</a>
       </nav>
+      <div class="rbn-topbar-controls">
+        <div class="rbn-view-toggle" title="表示レイアウトの切り替え">
+          <button type="button" class="rbn-view-toggle-btn" id="btn-view-mobile" data-view="mobile">📱 スマホ</button>
+          <button type="button" class="rbn-view-toggle-btn" id="btn-view-pc" data-view="pc">💻 PC</button>
+        </div>
+        <button type="button" class="rbn-settings-pill" id="header-settings-btn">⚙️ 設定</button>
+      </div>
+    </div>
+    <div class="rbn-header-title-row">
       <h1>📢 RBN 同盟通知ジェネレーター <span class="ver-badge">v6.9</span></h1>
     </div>
     <div class="header-right">
-      <div class="view-toggle-group" title="表示レイアウトの切り替え">
-        <button type="button" class="view-toggle-btn" id="btn-view-mobile" data-view="mobile">📱 スマホ</button>
-        <button type="button" class="view-toggle-btn" id="btn-view-pc" data-view="pc">💻 PC</button>
-      </div>
       <span class="sync-badge warn" id="sync-status-badge">クラウド同期確認中...</span>
     </div>
   </header>
@@ -1797,6 +1802,13 @@
 
   btnViewMobile.addEventListener('click', () => applyViewMode('mobile'));
   btnViewPc.addEventListener('click', () => applyViewMode('pc'));
+  const headerSettingsBtn = document.getElementById('header-settings-btn');
+  if (headerSettingsBtn) {
+    headerSettingsBtn.addEventListener('click', () => {
+      const settingsTab = document.querySelector('.nav-tab[data-tab="settings"]');
+      if (settingsTab) settingsTab.click();
+    });
+  }
 
   function initViewMode() {
     const savedMode = localStorage.getItem(VIEW_MODE_STORAGE_KEY);

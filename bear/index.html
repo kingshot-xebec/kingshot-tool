@@ -834,31 +834,32 @@
 <body>
 
 <header>
-  <div>
-    <div class="rbn-header-title-row">
-      <nav class="rbn-quick-nav" aria-label="ツール切替">
-        <a class="rbn-top-link" href="../" title="トップメニューへ戻る">🏠 トップ</a>
-        <a id="headerMapLink" class="rbn-top-link" href="../map/" title="RBN 都市マップを開く">🗺️ マップ</a>
-        <a id="headerNoticeLink" class="rbn-top-link" href="../notice/" title="RBN 同盟通知ジェネレーターを開く">📢 通知作成</a>
-      </nav>
-      <h1>🐻 RBN 熊編成ナビ</h1>
+  <div class="rbn-topbar">
+    <nav class="rbn-quick-nav" aria-label="ツール切替">
+      <a class="rbn-top-link" href="../" title="トップメニューへ戻る">🏠 トップ</a>
+      <a id="headerMapLink" class="rbn-top-link" href="../map/" title="RBN 都市マップを開く">🗺️ マップ</a>
+      <a id="headerNoticeLink" class="rbn-top-link" href="../notice/" title="RBN 同盟通知ジェネレーターを開く">📢 通知作成</a>
+    </nav>
+    <div class="rbn-topbar-controls">
+      <div class="rbn-view-toggle" role="group" aria-label="表示モード切替">
+        <button type="button" id="btnViewMobile" class="rbn-view-toggle-btn" onclick="setViewMode('mobile')" title="スマホ向け縦カード表示">📱 スマホ</button>
+        <button type="button" id="btnViewPc" class="rbn-view-toggle-btn" onclick="setViewMode('pc')" title="PC向けワイド表表示">💻 PC</button>
+      </div>
+      <button type="button" class="rbn-settings-pill" onclick="openAppSettingsModal()">⚙️ 設定</button>
     </div>
+  </div>
+  <div>
+    <h1>🐻 RBN 熊編成ナビ</h1>
     <div style="font-size: 0.75rem; color: var(--muted); margin-top: 2px;">
       <span id="masterVersionLabel">S1〜S8完全対応</span>・10ターン期待値＆スキル干渉自動判定モデル
     </div>
   </div>
   <div class="header-actions">
-    <div class="view-switch-group" role="group" aria-label="表示モード切替">
-      <button type="button" id="btnViewAuto" class="view-switch-btn active" onclick="setViewMode('auto')" title="画面幅に応じて自動切替">自動</button>
-      <button type="button" id="btnViewMobile" class="view-switch-btn" onclick="setViewMode('mobile')" title="スマホ向け縦カード表示">📱 スマホ</button>
-      <button type="button" id="btnViewPc" class="view-switch-btn" onclick="setViewMode('pc')" title="PC向けワイド表表示">💻 PC</button>
-    </div>
     <span id="syncStatus" class="badge-sync offline">⚪ ローカル読込</span>
     <button class="btn-blue" onclick="openTierModal()">🏆 環境Tier表</button>
     <button class="btn-purple" onclick="openInspectModal()">📋 マスター確認・補正</button>
     <button class="btn-green" onclick="openDataModal()">📦 マスタ管理</button>
     <button class="btn-secondary" onclick="resetLocalUser()">🔄 初期化</button>
-    <button class="btn-primary" onclick="openAppSettingsModal()">⚙️ 設定</button>
   </div>
 </header>
 
@@ -1323,13 +1324,11 @@
     body.classList.toggle("view-mobile", useMobile);
     body.classList.toggle("force-pc", currentViewMode === "pc");
 
-    const btnAuto = document.getElementById("btnViewAuto");
     const btnMobile = document.getElementById("btnViewMobile");
     const btnPc = document.getElementById("btnViewPc");
-    if (btnAuto && btnMobile && btnPc) {
-      btnAuto.classList.toggle("active", currentViewMode === "auto");
-      btnMobile.classList.toggle("active", currentViewMode === "mobile");
-      btnPc.classList.toggle("active", currentViewMode === "pc");
+    if (btnMobile && btnPc) {
+      btnMobile.classList.toggle("active", useMobile);
+      btnPc.classList.toggle("active", !useMobile);
     }
   }
 
