@@ -281,6 +281,7 @@
   const PLAYFUL_FEATURE_DEFS = Object.freeze([
     { key: "portalPeek", group: "🏠 トップページ", label: "👀 ひょっこり顔出し", desc: "画面端からランダムなメンバーがひょっこり一言つぶやきます" },
     { key: "portalPickup", group: "🏠 トップページ", label: "🌟 本日のピックアップ", desc: "日替わりで選ばれたメンバーをアイコン付きで紹介します" },
+    { key: "portalBattle", group: "🏠 トップページ", label: "⚔️ 3対3 紅白バトル演出", desc: "先鋒・中堅・大将をランダム選出して2勝先取で戦います" },
     { key: "portalRibbon", group: "🏠 トップページ", label: "🎞️ フッターのアイコン帯", desc: "下部に同盟メンバーのアイコンがゆっくり流れます" },
     { key: "mapPeekJump", group: "🗺️ 都市マップ", label: "📍 ひょっこり→都市へジャンプ", desc: "たまに現れるメンバーをタップするとその都市へ移動します" },
     { key: "bearCheer", group: "🐻 熊編成ナビ", label: "🔥 コピー時の熊出陣応援", desc: "編成コピー時にメンバーが応援カットインします" },

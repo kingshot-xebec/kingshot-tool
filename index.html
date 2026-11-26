@@ -396,6 +396,24 @@
       <div id="portalPickupList" class="rbn-pickup-list"></div>
     </section>
 
+    <!-- 3対3 紅白バトル演出（先鋒・中堅・大将／勝ち抜きなし2勝先取） -->
+    <section id="portalBattleBox" class="rbn-battle-box" aria-label="RBN 3対3 紅白バトル">
+      <div class="rbn-battle-head">
+        <span class="rbn-battle-title">⚔️ RBN 3対3 紅白バトル（先鋒・中堅・大将／2勝先取）</span>
+        <div class="rbn-battle-actions">
+          <button id="portalBattleRedrawBtn" type="button" class="rbn-playful-mini-btn">🎲 メンバー再抽選</button>
+          <button id="portalBattleStartBtn" type="button" class="rbn-battle-start-btn">⚔️ バトル開始</button>
+        </div>
+      </div>
+      <div class="rbn-battle-scoreboard">
+        <div class="rbn-battle-team-lbl red">🔴 紅組</div>
+        <div id="portalBattleScore" class="rbn-battle-score-num">0 - 0</div>
+        <div class="rbn-battle-team-lbl blue">白組 🔵</div>
+      </div>
+      <div id="portalBattleRounds" class="rbn-battle-rounds"></div>
+      <div id="portalBattleLog" class="rbn-battle-log">「⚔️ バトル開始」を押すと先鋒戦からスタート！</div>
+    </section>
+
     <!-- フッターの同盟アイコン帯（遊び心ON＆アイコン登録時のみ表示） -->
     <div id="portalRibbonWrap" class="rbn-ribbon-wrap" aria-label="RBN メンバーアイコン帯">
       <div id="portalRibbonTrack" class="rbn-ribbon-track"></div>
@@ -620,8 +638,255 @@
         }, waitMs);
       }
 
+      // ==================== 3対3 紅白バトル演出（先鋒・中堅・大将／勝ち抜きなし2勝先取） ====================
+      const battleBox = document.getElementById("portalBattleBox");
+      const battleRoundsEl = document.getElementById("portalBattleRounds");
+      const battleScoreEl = document.getElementById("portalBattleScore");
+      const battleLogEl = document.getElementById("portalBattleLog");
+      const battleStartBtn = document.getElementById("portalBattleStartBtn");
+      const battleRedrawBtn = document.getElementById("portalBattleRedrawBtn");
+
+      const BATTLE_ROLES = ["先鋒", "中堅", "大将"];
+      const BATTLE_MOVES = [
+        "会心の弓一斉射撃が炸裂！🏹",
+        "鉄壁の盾ガードから見事なカウンター！🛡️",
+        "怒涛の騎兵突撃で一気に突破！🐎",
+        "紙一重の見切り勝ち！⚡",
+        "奇跡のクリティカル発動！🔥",
+        "鮮やかな連係スキルで押し切った！✨",
+        "気合のラストアタックが決まった！💥"
+      ];
+
+      let battleLineup = null; // [{ role, red, blue, state: 'idle'|'fighting'|'red'|'blue'|'skipped' }]
+      let battleRunning = false;
+      let battleTimers = [];
+
+      function clearBattleTimers() {
+        battleTimers.forEach(function (t) { clearTimeout(t); });
+        battleTimers = [];
+        battleRunning = false;
+      }
+
+      function drawBattleLineup() {
+        const pool = window.RBNSuite.readLocalAvatarsSync();
+        if (pool.length < 2) {
+          battleLineup = null;
+          return false;
+        }
+        let chosen = [];
+        if (pool.length >= 6) {
+          chosen = window.RBNSuite.pickRandomAvatars(6);
+        } else {
+          // アイコン登録が2〜5名の間でも同一カード同士が当たらないようペア選出
+          for (let r = 0; r < 3; r++) {
+            const pair = window.RBNSuite.pickRandomAvatars(2);
+            chosen.push(pair[0], pair[1]);
+          }
+        }
+        battleLineup = BATTLE_ROLES.map(function (role, idx) {
+          return {
+            role: role,
+            red: chosen[idx * 2],
+            blue: chosen[idx * 2 + 1],
+            state: "idle"
+          };
+        });
+        return true;
+      }
+
+      function renderBattleArena() {
+        if (!battleBox || !battleRoundsEl) return;
+        if (!window.RBNSuite.isPlayfulEnabled("portalBattle")) {
+          clearBattleTimers();
+          battleBox.classList.remove("show");
+          return;
+        }
+        const pool = window.RBNSuite.readLocalAvatarsSync();
+        if (pool.length < 2) {
+          clearBattleTimers();
+          battleBox.classList.remove("show");
+          return;
+        }
+        if (!battleLineup) {
+          drawBattleLineup();
+        }
+        if (!battleLineup) {
+          battleBox.classList.remove("show");
+          return;
+        }
+
+        let redWins = 0;
+        let blueWins = 0;
+        battleLineup.forEach(function (m) {
+          if (m.state === "red") redWins++;
+          else if (m.state === "blue") blueWins++;
+        });
+        if (battleScoreEl) {
+          battleScoreEl.textContent = `${redWins} - ${blueWins}`;
+        }
+
+        battleRoundsEl.innerHTML = "";
+        battleLineup.forEach(function (m) {
+          const row = document.createElement("div");
+          row.className = "rbn-battle-row" +
+            (m.state === "fighting" ? " fighting" : "") +
+            (m.state === "skipped" ? " skipped" : "");
+
+          const mkFighter = function (member, side) {
+            const isWin = m.state === side;
+            const isLose = (m.state === "red" || m.state === "blue") && m.state !== side;
+            const el = document.createElement("div");
+            el.className = `rbn-battle-fighter ${side}-side${side === "blue" ? " right" : ""}${isWin ? " winner" : ""}${isLose ? " loser" : ""}`;
+
+            const img = document.createElement("img");
+            img.src = member.icon;
+            img.alt = member.name;
+
+            const info = document.createElement("div");
+            info.style.minWidth = "0";
+            const nameEl = document.createElement("div");
+            nameEl.className = "rbn-battle-fname";
+            nameEl.textContent = member.name;
+
+            const stEl = document.createElement("div");
+            stEl.className = "rbn-battle-fstate";
+            stEl.textContent = isWin
+              ? "👑 WIN!"
+              : isLose
+                ? "LOSE"
+                : m.state === "fighting"
+                  ? "⚔️ 交戦中..."
+                  : m.state === "skipped"
+                    ? "決着済"
+                    : "待機中";
+
+            info.append(nameEl, stEl);
+            el.append(img, info);
+            return el;
+          };
+
+          const center = document.createElement("div");
+          center.className = "rbn-battle-center";
+          const roleEl = document.createElement("span");
+          roleEl.className = "rbn-battle-role-badge";
+          roleEl.textContent = m.role;
+          const vsEl = document.createElement("span");
+          vsEl.className = "rbn-battle-vs";
+          vsEl.textContent = m.state === "fighting" ? "💥 VS 💥" : "VS";
+          center.append(roleEl, vsEl);
+
+          row.append(mkFighter(m.red, "red"), center, mkFighter(m.blue, "blue"));
+          battleRoundsEl.appendChild(row);
+        });
+
+        if (battleStartBtn) battleStartBtn.disabled = battleRunning;
+        if (battleRedrawBtn) battleRedrawBtn.disabled = battleRunning;
+        battleBox.classList.add("show");
+      }
+
+      function startThreeVsThreeBattle() {
+        if (battleRunning || !window.RBNSuite.isPlayfulEnabled("portalBattle")) return;
+        // 前回決着済みなら自動で新しい6名に再抽選してバトル開始
+        const alreadyFinished = battleLineup && battleLineup.some(function (m) {
+          return m.state === "red" || m.state === "blue";
+        });
+        if (!battleLineup || alreadyFinished) {
+          if (!drawBattleLineup()) return;
+        }
+        battleLineup.forEach(function (m) { m.state = "idle"; });
+        battleRunning = true;
+        if (battleLogEl) {
+          battleLogEl.className = "rbn-battle-log";
+          battleLogEl.textContent = "🔔 紅白3対3バトル開幕！先に2勝したチームの勝利！";
+        }
+        renderBattleArena();
+
+        let redWins = 0;
+        let blueWins = 0;
+
+        function playRound(idx) {
+          if (!window.RBNSuite.isPlayfulEnabled("portalBattle")) {
+            clearBattleTimers();
+            return;
+          }
+          const match = battleLineup[idx];
+          match.state = "fighting";
+          if (battleLogEl) {
+            battleLogEl.className = "rbn-battle-log";
+            battleLogEl.textContent =
+              idx === 2
+                ? `🔥 1勝1敗！運命の大将戦：${match.red.name} VS ${match.blue.name}！`
+                : `⚔️ 第${idx + 1}試合【${match.role}戦】${match.red.name} VS ${match.blue.name}！`;
+          }
+          renderBattleArena();
+
+          const tResolve = setTimeout(function () {
+            const winnerSide = Math.random() < 0.5 ? "red" : "blue";
+            match.state = winnerSide;
+            if (winnerSide === "red") redWins++;
+            else blueWins++;
+
+            const winMember = winnerSide === "red" ? match.red : match.blue;
+            const move = BATTLE_MOVES[Math.floor(Math.random() * BATTLE_MOVES.length)];
+            if (battleLogEl) {
+              battleLogEl.textContent = `【${match.role}戦】${winMember.name} の勝利！ ${move}`;
+            }
+            renderBattleArena();
+
+            // 2勝先取チェック
+            if (redWins >= 2 || blueWins >= 2) {
+              for (let k = idx + 1; k < battleLineup.length; k++) {
+                battleLineup[k].state = "skipped";
+              }
+              const tFinish = setTimeout(function () {
+                battleRunning = false;
+                const redWon = redWins >= 2;
+                if (battleLogEl) {
+                  battleLogEl.className = "rbn-battle-log " + (redWon ? "win-red" : "win-blue");
+                  battleLogEl.textContent = redWon
+                    ? `🏆 ${redWins} - ${blueWins} で【🔴 紅組】の勝利！！（もう1戦ボタンで新メンバー抽選）`
+                    : `🏆 ${redWins} - ${blueWins} で【🔵 白組】の勝利！！（もう1戦ボタンで新メンバー抽選）`;
+                }
+                if (battleStartBtn) battleStartBtn.textContent = "⚔️ もう1戦する";
+                renderBattleArena();
+              }, 950);
+              battleTimers.push(tFinish);
+            } else if (idx + 1 < battleLineup.length) {
+              const tNext = setTimeout(function () {
+                playRound(idx + 1);
+              }, 1100);
+              battleTimers.push(tNext);
+            }
+          }, 1150);
+          battleTimers.push(tResolve);
+        }
+
+        const tFirst = setTimeout(function () {
+          playRound(0);
+        }, 500);
+        battleTimers.push(tFirst);
+      }
+
+      if (battleStartBtn) {
+        battleStartBtn.addEventListener("click", startThreeVsThreeBattle);
+      }
+      if (battleRedrawBtn) {
+        battleRedrawBtn.addEventListener("click", function () {
+          if (battleRunning) return;
+          if (drawBattleLineup()) {
+            if (battleStartBtn) battleStartBtn.textContent = "⚔️ バトル開始";
+            if (battleLogEl) {
+              battleLogEl.className = "rbn-battle-log";
+              battleLogEl.textContent = "新しい対戦カードが決定！「⚔️ バトル開始」で勝負！";
+            }
+            renderBattleArena();
+          }
+        });
+      }
+
       function refreshPortalPlayfulUI() {
         renderPickupMembers(false);
+        renderBattleArena();
         renderFooterRibbon();
         schedulePortalPeekLoop();
       }
