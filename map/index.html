@@ -557,9 +557,29 @@
     }
     .map-selection-head {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: 8px;
+    }
+    .map-selection-head-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+    .map-sel-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 7px;
+      object-fit: cover;
+      border: 1px solid rgba(250, 204, 21, 0.55);
+      background: var(--bg);
+      flex-shrink: 0;
+      display: none;
+    }
+    .map-sel-avatar.show {
+      display: block;
     }
     .map-selection-title {
       font-size: 13px;
@@ -705,7 +725,7 @@
     }
     .roster-cols {
       display: grid;
-      grid-template-columns: 34px minmax(85px, 1.35fr) minmax(72px, 0.95fr) minmax(105px, 1.25fr) 28px;
+      grid-template-columns: 30px 32px minmax(78px, 1.3fr) minmax(68px, 0.9fr) minmax(100px, 1.2fr) 28px;
       gap: 5px;
       padding: 5px 8px;
       font-size: 11px;
@@ -714,6 +734,7 @@
       border-bottom: 1px solid var(--border);
       background: var(--bg);
       flex-shrink: 0;
+      align-items: center;
     }
     .roster-list {
       flex: 1;
@@ -742,7 +763,7 @@
     }
     .member-row {
       display: grid;
-      grid-template-columns: 34px minmax(85px, 1.35fr) minmax(72px, 0.95fr) minmax(105px, 1.25fr) 28px;
+      grid-template-columns: 30px 32px minmax(78px, 1.3fr) minmax(68px, 0.9fr) minmax(100px, 1.2fr) 28px;
       gap: 5px;
       align-items: center;
       padding: 4px;
@@ -751,6 +772,40 @@
       border: 1px solid rgba(51, 65, 85, 0.55);
       font-size: 12px;
       transition: background 0.12s, border-color 0.12s;
+    }
+    .member-avatar-cell {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin: 0 auto;
+      font-size: 13px;
+      color: var(--muted);
+      flex-shrink: 0;
+      position: relative;
+    }
+    .member-avatar-cell.editable {
+      cursor: pointer;
+    }
+    .member-avatar-cell.editable:hover {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
+    }
+    .member-avatar-cell img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .member-avatar-cell.facility-avatar {
+      background: rgba(15, 23, 42, 0.8);
+      border-color: rgba(245, 158, 11, 0.45);
+      font-size: 14px;
     }
     .member-row:hover {
       border-color: rgba(148, 163, 184, 0.45);
@@ -931,9 +986,15 @@
     }
     body.mobile-mode .roster-cols,
     body.mobile-mode .member-row {
-      grid-template-columns: 30px minmax(75px, 1.35fr) minmax(64px, 0.9fr) minmax(96px, 1.25fr) 30px;
+      grid-template-columns: 24px 28px minmax(64px, 1.25fr) minmax(56px, 0.85fr) minmax(88px, 1.15fr) 26px;
       gap: 4px;
       padding: 5px 4px;
+    }
+    body.mobile-mode .member-avatar-cell {
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      font-size: 11px;
     }
     body.mobile-mode .member-row input[type="text"],
     body.mobile-mode .member-row input[type="number"] {
@@ -1109,6 +1170,319 @@
       border-color: var(--blue);
       color: var(--blue);
     }
+
+    /* スクショAI読込＆差分確認モーダル */
+    #ocrImportModal {
+      z-index: 45;
+    }
+    .modal-box.ocr-modal {
+      width: 920px;
+      max-width: 100%;
+      max-height: 92vh;
+    }
+    .ocr-steps {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .ocr-step-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .ocr-step-pill.active {
+      background: rgba(14, 165, 233, 0.18);
+      border-color: var(--blue);
+      color: #e0f2fe;
+    }
+    .ocr-step-pill.done {
+      background: rgba(16, 185, 129, 0.16);
+      border-color: var(--emerald);
+      color: #a7f3d0;
+    }
+    .ocr-api-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+    .ocr-api-status.ok {
+      color: #6ee7b7;
+      font-weight: 600;
+    }
+    .ocr-api-status.warn {
+      color: #fca5a5;
+      font-weight: 600;
+    }
+    .ocr-dropzone {
+      border: 2px dashed rgba(56, 189, 248, 0.45);
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.65);
+      padding: 18px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .ocr-dropzone:hover,
+    .ocr-dropzone.dragover {
+      border-color: var(--blue);
+      background: rgba(14, 165, 233, 0.12);
+    }
+    .ocr-dropzone-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 4px;
+    }
+    .ocr-dropzone-sub {
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+    .ocr-file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+      gap: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 2px;
+    }
+    .ocr-file-card {
+      position: relative;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .ocr-file-card img {
+      width: 100%;
+      height: 86px;
+      object-fit: cover;
+      display: block;
+    }
+    .ocr-file-name {
+      padding: 3px 5px;
+      font-size: 10px;
+      color: #cbd5e1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ocr-file-remove {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(248, 113, 113, 0.7);
+      color: #fecaca;
+      font-size: 11px;
+      line-height: 1;
+    }
+    .ocr-progress-box {
+      display: none;
+      background: rgba(14, 165, 233, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 12px;
+      color: #e0f2fe;
+      line-height: 1.5;
+    }
+    .ocr-progress-box.show {
+      display: block;
+    }
+    .ocr-summary-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 11.5px;
+    }
+    .ocr-stat-chip {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: #e2e8f0;
+    }
+    .ocr-stat-chip.matched { border-color: rgba(16, 185, 129, 0.55); color: #6ee7b7; }
+    .ocr-stat-chip.renamed { border-color: rgba(56, 189, 248, 0.65); color: #7dd3fc; }
+    .ocr-stat-chip.added { border-color: rgba(245, 158, 11, 0.65); color: #fcd34d; }
+    .ocr-stat-chip.kept { border-color: rgba(168, 85, 247, 0.6); color: #d8b4fe; }
+    .ocr-stat-chip.removed { border-color: rgba(239, 68, 68, 0.6); color: #fca5a5; }
+    .ocr-filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+    .ocr-review-scroll {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 48vh;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .ocr-diff-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ocr-row-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ocr-row-card.status-matched {
+      border-left: 3px solid var(--emerald);
+    }
+    .ocr-row-card.status-renamed {
+      border-left: 3px solid var(--blue);
+      background: rgba(14, 165, 233, 0.06);
+    }
+    .ocr-row-card.status-new {
+      border-left: 3px solid var(--accent);
+      background: rgba(245, 158, 11, 0.06);
+    }
+    .ocr-row-card.excluded {
+      opacity: 0.48;
+    }
+    .ocr-row-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+    }
+    .ocr-badge {
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+    .ocr-badge.matched { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+    .ocr-badge.renamed { background: rgba(14, 165, 233, 0.22); color: #7dd3fc; }
+    .ocr-badge.new { background: rgba(245, 158, 11, 0.22); color: #fcd34d; }
+    .ocr-badge.coord { background: rgba(51, 65, 85, 0.85); color: #cbd5e1; }
+    .ocr-badge.suggest { background: rgba(56, 189, 248, 0.18); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.45); }
+    .ocr-row-main {
+      display: grid;
+      grid-template-columns: 38px minmax(110px, 1.35fr) minmax(95px, 0.9fr) auto;
+      gap: 6px;
+      align-items: center;
+    }
+    .ocr-avatar-preview {
+      width: 36px;
+      height: 36px;
+      border-radius: 7px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: pointer;
+      font-size: 15px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .ocr-avatar-preview:hover {
+      border-color: var(--blue);
+    }
+    .ocr-avatar-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .ocr-row-main input[type="text"],
+    .ocr-row-main input[type="number"] {
+      width: 100%;
+      min-width: 0;
+      padding: 5px 7px;
+      font-size: 12px;
+    }
+    .ocr-row-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+    }
+    .ocr-row-controls select {
+      max-width: 100%;
+      padding: 4px 6px;
+      font-size: 11.5px;
+    }
+    .ocr-missing-box {
+      background: rgba(127, 29, 29, 0.16);
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .ocr-missing-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fecaca;
+    }
+    .ocr-missing-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 9px;
+      font-size: 12px;
+    }
+    .ocr-missing-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    @media (max-width: 680px) {
+      .ocr-row-main {
+        grid-template-columns: 36px 1fr;
+      }
+    }
   </style>
 </head>
 <body class="view-only">
@@ -1191,9 +1565,12 @@
       <!-- マップ下部：選択中の都市・施設ミニ情報カード -->
       <div id="mapSelectionCard" class="map-selection-card" aria-live="polite">
         <div class="map-selection-head">
-          <div>
-            <div id="mapSelTitle" class="map-selection-title"></div>
-            <div id="mapSelSub" class="map-selection-sub"></div>
+          <div class="map-selection-head-main">
+            <img id="mapSelAvatar" class="map-sel-avatar" alt="" />
+            <div style="min-width:0;">
+              <div id="mapSelTitle" class="map-selection-title"></div>
+              <div id="mapSelSub" class="map-selection-sub"></div>
+            </div>
           </div>
           <button id="mapSelCloseBtn" class="map-selection-close" type="button" aria-label="選択解除">✕</button>
         </div>
@@ -1210,7 +1587,8 @@
           <span id="placedCountInfo" style="color: #34d399; font-size: 11px; margin-left: 4px;">配置済：0/100</span>
         </div>
         <div class="roster-actions edit-only">
-          <button id="openImportBtn" class="primary" type="button">一括貼付</button>
+          <button id="openOcrImportBtn" class="primary" type="button" title="メンバー一覧スクショから名前・総力・アイコンをAI解析">📷 スクショ読込</button>
+          <button id="openImportBtn" type="button">一括貼付</button>
           <button id="copyExcelBtn" type="button">Excelコピー</button>
           <button id="downloadCsvBtn" type="button">CSV保存</button>
           <button id="resetAllBtn" type="button" title="保存データを初期化">初期化</button>
@@ -1225,12 +1603,14 @@
       </div>
       <div class="roster-cols">
         <div style="text-align:center;">順位</div>
+        <div style="text-align:center;">アイコン</div>
         <div>名前</div>
         <div style="text-align:right;">総力</div>
         <div style="text-align:center;">基準(X, Y)</div>
         <div style="text-align:center;">解除</div>
       </div>
       <div id="rosterList" class="roster-list"></div>
+      <input id="singleAvatarFileInput" type="file" accept="image/*" style="display:none;" />
     </aside>
   </div>
 
@@ -1376,6 +1756,105 @@
     </div>
   </div>
 
+  <!-- スクショAI読込＆差分確認モーダル -->
+  <div id="ocrImportModal" class="modal-backdrop">
+    <div class="modal-box ocr-modal">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <h4>📷 スクショから名簿＆アイコンAI読込（確認ステップ付き）</h4>
+        <div class="ocr-steps">
+          <span id="ocrStepBadge1" class="ocr-step-pill active">STEP 1: 画像追加・AI解析</span>
+          <span style="color:var(--muted); font-size:11px;">→</span>
+          <span id="ocrStepBadge2" class="ocr-step-pill">STEP 2: 差分確認・名前変更の紐づけ</span>
+        </div>
+      </div>
+
+      <!-- STEP 1: 画像アップロード & AI解析 -->
+      <div id="ocrStep1Pane" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="ocr-api-bar">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span id="ocrApiStatusBar" class="ocr-api-status">APIキー確認中...</span>
+            <button id="ocrOpenSettingsFromModalBtn" type="button" style="padding:3px 8px; font-size:11px;">⚙️ APIキー設定</button>
+          </div>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#cbd5e1;">
+            使用モデル:
+            <select id="ocrModelSelect" style="font-size:11.5px; padding:3px 6px;"></select>
+          </label>
+        </div>
+
+        <div class="modal-hint" style="margin:0;">
+          同盟メンバー一覧のスクリーンショット（複数枚まとめてOK）をアップロードすると、Gemini AI が <strong>プレイヤー名・総力・アイコン画像（48×48圧縮）</strong> を読み取ります。<br />
+          ※ <strong>解析してもすぐには上書きされません。</strong> 次のステップで「継続・新規・名前変更・いなくなった人」を確認・手補正してから反映します。既存の座標紐づけも維持されます。
+        </div>
+
+        <div id="ocrDropZone" class="ocr-dropzone" tabindex="0" role="button" aria-label="スクリーンショットを選択またはドロップ">
+          <div class="ocr-dropzone-title">📸 ここをタップしてスクショを選択（複数選択可）</div>
+          <div class="ocr-dropzone-sub">ドラッグ＆ドロップ ／ PCなら Ctrl+V でクリップボードから直接貼り付けもできます</div>
+          <input id="ocrFileInput" type="file" accept="image/*" multiple style="display:none;" />
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <span id="ocrFileCountLabel" style="font-size:12px; color:#cbd5e1;">選択中の画像：0枚</span>
+          <button id="ocrClearFilesBtn" type="button" style="padding:3px 8px; font-size:11px;" disabled>画像をすべてクリア</button>
+        </div>
+        <div id="ocrFileList" class="ocr-file-grid"></div>
+
+        <div id="ocrProgressBox" class="ocr-progress-box"></div>
+        <div id="ocrErrorBox" class="pin-error"></div>
+
+        <div class="modal-footer">
+          <button id="closeOcrStep1Btn" type="button">キャンセル</button>
+          <button id="runOcrParseBtn" class="primary" type="button" disabled>🤖 AIで名簿＆アイコンを解析</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: 差分確認・手動補正・名前変更紐づけ -->
+      <div id="ocrStep2Pane" style="display:none; flex-direction:column; gap:10px;">
+        <div id="ocrSummaryBar" class="ocr-summary-bar"></div>
+        <div id="ocrOverLimitWarn" class="pin-error" style="display:none; background:rgba(127,29,29,0.28); border:1px solid rgba(239,68,68,0.55); border-radius:6px; padding:6px 10px;"></div>
+
+        <div class="ocr-filter-row">
+          <div id="ocrFilterTabs" class="roster-filter-pills" role="group" aria-label="差分フィルタ">
+            <button type="button" class="roster-filter-pill active" data-ocr-filter="attention">⚠️ 要確認のみ</button>
+            <button type="button" class="roster-filter-pill" data-ocr-filter="all">すべて表示</button>
+            <button type="button" class="roster-filter-pill" data-ocr-filter="matched">✅ 継続のみ</button>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button id="ocrAddManualRowBtn" type="button" style="padding:4px 8px; font-size:11.5px;">＋ 行を手動追加</button>
+            <button id="ocrReMatchBtn" type="button" style="padding:4px 8px; font-size:11.5px;" title="名前を修正した後に既存名簿と再照合します">🔄 名前を再照合</button>
+          </div>
+        </div>
+
+        <div class="ocr-review-scroll">
+          <div id="ocrDiffList" class="ocr-diff-list"></div>
+
+          <div id="ocrMissingSection" class="ocr-missing-box" style="display:none;">
+            <div class="ocr-missing-head">
+              <span>👋 いなくなった人（スクショに見つからず、名前変更にも未紐づけ）</span>
+              <div style="display:flex; gap:5px;">
+                <button id="ocrMissingKeepAllBtn" type="button" style="padding:3px 7px; font-size:11px;">全員「残す」</button>
+                <button id="ocrMissingRemoveAllBtn" type="button" style="padding:3px 7px; font-size:11px;">全員「除外」</button>
+              </div>
+            </div>
+            <div style="font-size:11px; color:#fca5a5;">
+              ※ 名前変更した人は上のリストの「紐づけ先」から選ぶと、座標を引き継いでここから消えます。スクショの撮り漏れなら「撮り漏れのため残す」を選んでください。
+            </div>
+            <div id="ocrMissingList" style="display:flex; flex-direction:column; gap:6px;"></div>
+          </div>
+        </div>
+
+        <input id="ocrSingleIconInput" type="file" accept="image/*" style="display:none;" />
+
+        <div class="modal-footer" style="justify-content:space-between; flex-wrap:wrap;">
+          <button id="ocrBackToStep1Btn" type="button">← 画像選択に戻る</button>
+          <div style="display:flex; gap:8px;">
+            <button id="closeOcrStep2Btn" type="button">キャンセル</button>
+            <button id="applyOcrDiffBtn" class="primary" type="button">✅ この内容で名簿へ反映する</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- バックアップ管理モーダル（直近5件 / 日別初回直近3日分） -->
   <div id="backupModal" class="modal-backdrop">
     <div class="modal-box">
@@ -1489,11 +1968,12 @@
         power: Number.isFinite(Number(m.power)) ? Number(m.power) : 0,
         type: FACILITY_TYPES[m.type] ? m.type : "city",
         x: Number.isInteger(m.x) ? m.x : null,
-        y: Number.isInteger(m.y) ? m.y : null
+        y: Number.isInteger(m.y) ? m.y : null,
+        icon: typeof m.icon === "string" ? m.icon : ""
       }));
       while (members.length < ROSTER_LIMIT) {
         const idx = members.length;
-        members.push({ id: idx + 1, name: "", power: 0, type: "city", x: null, y: null });
+        members.push({ id: idx + 1, name: "", power: 0, type: "city", x: null, y: null, icon: "" });
       }
 
       const idSet = new Set(members.map((m) => m.id));
@@ -1703,7 +2183,6 @@
     const placedCountInfo = document.getElementById("placedCountInfo");
     const rosterListEl = document.getElementById("rosterList");
 
-    const modeBadge = document.getElementById("modeBadge");
     const toggleEditModeBtn = document.getElementById("toggleEditModeBtn");
     const openBackupModalBtn = document.getElementById("openBackupModalBtn");
     const backupModal = document.getElementById("backupModal");
@@ -2102,7 +2581,8 @@
         power: (ROSTER_LIMIT - idx) * 100000,
         type: "city",
         x: null,
-        y: null
+        y: null,
+        icon: ""
       }));
     }
 
@@ -2141,7 +2621,7 @@
         timestamp: timestampLabel,
         createdAt: Date.now(),
         centerGameBase: { ...CENTER_GAME_BASE },
-        members: JSON.parse(JSON.stringify(members)),
+        members: members.map(({ icon, ...rest }) => ({ ...rest })),
         orderedMemberIds: [...orderedMemberIds],
         facilities: JSON.parse(JSON.stringify(facilities)),
         nextFacilityId
@@ -2202,17 +2682,33 @@
         updateCenterBaseBadge();
       }
 
-      members = snapshot.members.slice(0, ROSTER_LIMIT).map((m, idx) => ({
-        id: Number.isInteger(m.id) ? m.id : idx + 1,
-        name: typeof m.name === "string" ? m.name : "",
-        power: Number.isFinite(Number(m.power)) ? Number(m.power) : 0,
-        type: FACILITY_TYPES[m.type] ? m.type : "city",
-        x: Number.isInteger(m.x) ? m.x : null,
-        y: Number.isInteger(m.y) ? m.y : null
-      }));
+      const iconById = new Map(members.filter((m) => m.icon).map((m) => [m.id, m.icon]));
+      const iconByName = new Map(
+        members
+          .filter((m) => m.icon && String(m.name || "").trim())
+          .map((m) => [String(m.name).trim().toLowerCase(), m.icon])
+      );
+
+      members = snapshot.members.slice(0, ROSTER_LIMIT).map((m, idx) => {
+        const id = Number.isInteger(m.id) ? m.id : idx + 1;
+        const name = typeof m.name === "string" ? m.name : "";
+        const preservedIcon =
+          typeof m.icon === "string" && m.icon
+            ? m.icon
+            : iconById.get(id) || iconByName.get(name.trim().toLowerCase()) || "";
+        return {
+          id,
+          name,
+          power: Number.isFinite(Number(m.power)) ? Number(m.power) : 0,
+          type: FACILITY_TYPES[m.type] ? m.type : "city",
+          x: Number.isInteger(m.x) ? m.x : null,
+          y: Number.isInteger(m.y) ? m.y : null,
+          icon: preservedIcon
+        };
+      });
       while (members.length < ROSTER_LIMIT) {
         const idx = members.length;
-        members.push({ id: idx + 1, name: "", power: 0, type: "city", x: null, y: null });
+        members.push({ id: idx + 1, name: "", power: 0, type: "city", x: null, y: null, icon: "" });
       }
       orderedMemberIds = Array.isArray(snapshot.orderedMemberIds)
         ? [...snapshot.orderedMemberIds]
@@ -2533,12 +3029,13 @@
           power: Number.isFinite(Number(m.power)) ? Number(m.power) : 0,
           type: FACILITY_TYPES[m.type] ? m.type : "city",
           x: Number.isInteger(m.x) ? m.x : null,
-          y: Number.isInteger(m.y) ? m.y : null
+          y: Number.isInteger(m.y) ? m.y : null,
+          icon: typeof m.icon === "string" ? m.icon : ""
         }));
 
         while (restored.length < ROSTER_LIMIT) {
           const idx = restored.length;
-          restored.push({ id: idx + 1, name: "", power: 0, type: "city", x: null, y: null });
+          restored.push({ id: idx + 1, name: "", power: 0, type: "city", x: null, y: null, icon: "" });
         }
 
         members = restored;
@@ -2582,6 +3079,9 @@
     function resortByPower() {
       orderedMemberIds = [...members]
         .sort((a, b) => {
+          const aNamed = String(a.name || "").trim() !== "" ? 1 : 0;
+          const bNamed = String(b.name || "").trim() !== "" ? 1 : 0;
+          if (bNamed !== aNamed) return bNamed - aNamed;
           if (b.power !== a.power) return b.power - a.power;
           return a.id - b.id;
         })
@@ -3169,6 +3669,34 @@
       rankDiv.className = "rank-badge";
       rankDiv.textContent = rankLabelText;
 
+      const avatarCell = document.createElement("div");
+      avatarCell.className = "member-avatar-cell";
+      if (ent.kind === "facility") {
+        avatarCell.classList.add("facility-avatar");
+        const emojiMap = { hq: "🏛️", trap: "🐻", flag: "🚩", gathering: "⛏️", honor: "🏆" };
+        avatarCell.textContent = emojiMap[ent.type] || "🏗️";
+        avatarCell.title = (FACILITY_TYPES[ent.type] || FACILITY_TYPES.trap).label;
+      } else {
+        if (isEditable) {
+          avatarCell.classList.add("editable");
+          avatarCell.title = "タップしてこのメンバーのアイコン画像を設定・変更";
+        }
+        if (ent.icon) {
+          const img = document.createElement("img");
+          img.src = ent.icon;
+          img.alt = "";
+          img.loading = "lazy";
+          avatarCell.appendChild(img);
+        } else {
+          avatarCell.textContent = "👤";
+        }
+        avatarCell.addEventListener("click", (e) => {
+          if (!isEditable) return;
+          e.stopPropagation();
+          openSingleAvatarPicker(ent.id);
+        });
+      }
+
       const nameInput = document.createElement("input");
       nameInput.type = "text";
       nameInput.value = ent.name;
@@ -3316,7 +3844,7 @@
         persistChanges();
       });
 
-      row.append(rankDiv, nameInput, powerCell, coordPair, clearBtn);
+      row.append(rankDiv, avatarCell, nameInput, powerCell, coordPair, clearBtn);
       return row;
     }
 
@@ -3398,6 +3926,13 @@
         const clearBtn = rowEl.querySelector(".clear-coord-btn");
         if (clearBtn) {
           clearBtn.disabled = !isEditable || !isPlaced;
+        }
+        if (kind === "member") {
+          const avCell = rowEl.querySelector(".member-avatar-cell");
+          if (avCell) {
+            avCell.classList.toggle("editable", isEditable);
+            avCell.title = isEditable ? "タップしてこのメンバーのアイコン画像を設定・変更" : "";
+          }
         }
       });
     }
@@ -3506,6 +4041,16 @@
         } else {
           rankText = `${eDef.label}（${eDef.size}×${eDef.size}）`;
         }
+        const mapSelAvatar = document.getElementById("mapSelAvatar");
+        if (mapSelAvatar) {
+          if (selectedEnt.kind === "member" && selectedEnt.icon) {
+            mapSelAvatar.src = selectedEnt.icon;
+            mapSelAvatar.classList.add("show");
+          } else {
+            mapSelAvatar.removeAttribute("src");
+            mapSelAvatar.classList.remove("show");
+          }
+        }
         mapSelTitle.textContent = `${selectedEnt.kind === "member" ? "👤" : "🏛️"} ${selectedEnt.name || "名称未設定"}`;
         mapSelSub.textContent = `${rankText ? rankText + " ｜ " : ""}座標 X:${gBase.x}, Y:${gBase.y}`;
         mapSelActions.innerHTML = "";
@@ -3528,6 +4073,11 @@
         mapSelectionCard.classList.add("show");
         document.body.classList.add("has-selection-card");
       } else if (selectedEmptyGridBase && isEditable) {
+        const mapSelAvatar = document.getElementById("mapSelAvatar");
+        if (mapSelAvatar) {
+          mapSelAvatar.removeAttribute("src");
+          mapSelAvatar.classList.remove("show");
+        }
         const gEmpty = gridToGame(selectedEmptyGridBase.x, selectedEmptyGridBase.y);
         mapSelTitle.textContent = `📌 空きマス（X:${gEmpty.x}, Y:${gEmpty.y}）`;
         mapSelSub.textContent = placeBtn.textContent || "選択位置に配置できます";
@@ -3660,13 +4210,20 @@
         return;
       }
 
+      const prevIconByName = new Map(
+        members
+          .filter((m) => m.icon && String(m.name || "").trim())
+          .map((m) => [String(m.name).trim().toLowerCase(), m.icon])
+      );
+
       const freshMembers = Array.from({ length: ROSTER_LIMIT }, (_, idx) => ({
         id: idx + 1,
         name: "",
         power: 0,
         type: "city",
         x: null,
-        y: null
+        y: null,
+        icon: ""
       }));
 
       const freshFacilities = [];
@@ -3680,6 +4237,7 @@
           target.name = item.name;
           target.power = item.power;
           target.type = "city";
+          target.icon = prevIconByName.get(String(item.name || "").trim().toLowerCase()) || "";
 
           if (item.gx !== null && item.gy !== null) {
             target.x = item.gx;
@@ -4351,6 +4909,1259 @@
       resortByPower();
     }
 
+    // ==================== アイコン個別設定 ＆ スクショAI読込（確認ステップ付き） ====================
+    const openOcrImportBtn = document.getElementById("openOcrImportBtn");
+    const singleAvatarFileInput = document.getElementById("singleAvatarFileInput");
+    const ocrImportModal = document.getElementById("ocrImportModal");
+    const ocrStepBadge1 = document.getElementById("ocrStepBadge1");
+    const ocrStepBadge2 = document.getElementById("ocrStepBadge2");
+    const ocrStep1Pane = document.getElementById("ocrStep1Pane");
+    const ocrStep2Pane = document.getElementById("ocrStep2Pane");
+    const ocrApiStatusBar = document.getElementById("ocrApiStatusBar");
+    const ocrOpenSettingsFromModalBtn = document.getElementById("ocrOpenSettingsFromModalBtn");
+    const ocrModelSelect = document.getElementById("ocrModelSelect");
+    const ocrDropZone = document.getElementById("ocrDropZone");
+    const ocrFileInput = document.getElementById("ocrFileInput");
+    const ocrFileCountLabel = document.getElementById("ocrFileCountLabel");
+    const ocrClearFilesBtn = document.getElementById("ocrClearFilesBtn");
+    const ocrFileList = document.getElementById("ocrFileList");
+    const ocrProgressBox = document.getElementById("ocrProgressBox");
+    const ocrErrorBox = document.getElementById("ocrErrorBox");
+    const closeOcrStep1Btn = document.getElementById("closeOcrStep1Btn");
+    const runOcrParseBtn = document.getElementById("runOcrParseBtn");
+
+    const ocrSummaryBar = document.getElementById("ocrSummaryBar");
+    const ocrOverLimitWarn = document.getElementById("ocrOverLimitWarn");
+    const ocrFilterTabs = document.getElementById("ocrFilterTabs");
+    const ocrAddManualRowBtn = document.getElementById("ocrAddManualRowBtn");
+    const ocrReMatchBtn = document.getElementById("ocrReMatchBtn");
+    const ocrDiffList = document.getElementById("ocrDiffList");
+    const ocrMissingSection = document.getElementById("ocrMissingSection");
+    const ocrMissingList = document.getElementById("ocrMissingList");
+    const ocrMissingKeepAllBtn = document.getElementById("ocrMissingKeepAllBtn");
+    const ocrMissingRemoveAllBtn = document.getElementById("ocrMissingRemoveAllBtn");
+    const ocrSingleIconInput = document.getElementById("ocrSingleIconInput");
+    const ocrBackToStep1Btn = document.getElementById("ocrBackToStep1Btn");
+    const closeOcrStep2Btn = document.getElementById("closeOcrStep2Btn");
+    const applyOcrDiffBtn = document.getElementById("applyOcrDiffBtn");
+
+    const OCR_DEFAULT_MODELS = ["gemini-flash-preview", "gemini-2.5-flash", "gemini-flash-lite-latest"];
+    const AVATAR_SIZE_PX = 48;
+
+    let pendingSingleAvatarMemberId = null;
+    let pendingOcrIconRowKey = null;
+    let ocrUploadedFiles = [];
+    let ocrIsRunning = false;
+    let ocrReviewRows = [];
+    let ocrMissingActionByOldId = {};
+    let ocrActiveFilter = "attention";
+    let ocrRowSeq = 1;
+
+    function normalizeMemberNameKey(name) {
+      return String(name || "")
+        .normalize("NFKC")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+    }
+
+    function encodeCanvasAvatar(canvasEl) {
+      try {
+        const webp = canvasEl.toDataURL("image/webp", 0.72);
+        if (webp.startsWith("data:image/webp")) return webp;
+      } catch (_) {}
+      return canvasEl.toDataURL("image/jpeg", 0.74);
+    }
+
+    function loadImageElementFromBlob(blobOrFile) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(blobOrFile);
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          resolve(img);
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error("画像の読み込みに失敗しました"));
+        };
+        img.src = url;
+      });
+    }
+
+    async function compressImageFileToAvatar(file) {
+      const img = await loadImageElementFromBlob(file);
+      const side = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
+      const sx = Math.max(0, Math.floor(((img.naturalWidth || img.width) - side) / 2));
+      const sy = Math.max(0, Math.floor(((img.naturalHeight || img.height) - side) / 2));
+      const off = document.createElement("canvas");
+      off.width = AVATAR_SIZE_PX;
+      off.height = AVATAR_SIZE_PX;
+      const octx = off.getContext("2d");
+      octx.imageSmoothingEnabled = true;
+      octx.imageSmoothingQuality = "high";
+      octx.drawImage(img, sx, sy, side, side, 0, 0, AVATAR_SIZE_PX, AVATAR_SIZE_PX);
+      return encodeCanvasAvatar(off);
+    }
+
+    function cropIconFromImage(img, iconBox) {
+      if (!img || !Array.isArray(iconBox) || iconBox.length !== 4) return "";
+      const [rawYmin, rawXmin, rawYmax, rawXmax] = iconBox.map((n) => Number(n));
+      if (![rawYmin, rawXmin, rawYmax, rawXmax].every((n) => Number.isFinite(n))) return "";
+      const ymin = Math.max(0, Math.min(1000, rawYmin));
+      const xmin = Math.max(0, Math.min(1000, rawXmin));
+      const ymax = Math.max(0, Math.min(1000, rawYmax));
+      const xmax = Math.max(0, Math.min(1000, rawXmax));
+      if (ymax - ymin < 8 || xmax - xmin < 8) return "";
+
+      const imgW = img.naturalWidth || img.width;
+      const imgH = img.naturalHeight || img.height;
+      let sx = (xmin / 1000) * imgW;
+      let sy = (ymin / 1000) * imgH;
+      let sw = ((xmax - xmin) / 1000) * imgW;
+      let sh = ((ymax - ymin) / 1000) * imgH;
+
+      // 正方形に中央クロップし、わずかに内側へ寄せて枠のゴミを減らす
+      const baseSide = Math.min(sw, sh);
+      const inset = baseSide * 0.03;
+      const side = Math.max(8, baseSide - inset * 2);
+      const cx = sx + sw / 2;
+      const cy = sy + sh / 2;
+      sx = Math.max(0, Math.min(imgW - side, cx - side / 2));
+      sy = Math.max(0, Math.min(imgH - side, cy - side / 2));
+
+      const off = document.createElement("canvas");
+      off.width = AVATAR_SIZE_PX;
+      off.height = AVATAR_SIZE_PX;
+      const octx = off.getContext("2d");
+      octx.imageSmoothingEnabled = true;
+      octx.imageSmoothingQuality = "high";
+      octx.drawImage(img, sx, sy, side, side, 0, 0, AVATAR_SIZE_PX, AVATAR_SIZE_PX);
+      return encodeCanvasAvatar(off);
+    }
+
+    function imageToResizedBase64ForGemini(img, maxDim = 1600) {
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      const scale = Math.min(1, maxDim / Math.max(w, h));
+      const tw = Math.max(1, Math.round(w * scale));
+      const th = Math.max(1, Math.round(h * scale));
+      const off = document.createElement("canvas");
+      off.width = tw;
+      off.height = th;
+      const octx = off.getContext("2d");
+      octx.imageSmoothingEnabled = true;
+      octx.imageSmoothingQuality = "high";
+      octx.drawImage(img, 0, 0, tw, th);
+      const dataUrl = off.toDataURL("image/jpeg", 0.86);
+      return { mimeType: "image/jpeg", data: dataUrl.split(",")[1] || "" };
+    }
+
+    function openSingleAvatarPicker(memberId) {
+      if (!isEditable || !singleAvatarFileInput) return;
+      pendingSingleAvatarMemberId = memberId;
+      singleAvatarFileInput.value = "";
+      singleAvatarFileInput.click();
+    }
+
+    if (singleAvatarFileInput) {
+      singleAvatarFileInput.addEventListener("change", async (e) => {
+        const file = e.target.files && e.target.files[0];
+        const targetId = pendingSingleAvatarMemberId;
+        pendingSingleAvatarMemberId = null;
+        if (!file || targetId == null || !isEditable) return;
+        try {
+          const dataUrl = await compressImageFileToAvatar(file);
+          const targetM = members.find((m) => m.id === targetId);
+          if (!targetM) return;
+          targetM.icon = dataUrl;
+          renderRoster();
+          updateMapSelectionCard();
+          persistChanges();
+          RBNSuite.showToast(`🖼️ 「${targetM.name || "メンバー"}」のアイコンを更新しました`, "ok");
+        } catch (err) {
+          RBNSuite.showToast("⚠️ アイコン画像の読み込みに失敗しました", "error");
+        }
+      });
+    }
+
+    function getEffectiveGeminiApiKey() {
+      const fromShared = sharedSettings && sharedSettings.ai && sharedSettings.ai.studioApiKey
+        ? String(sharedSettings.ai.studioApiKey).trim()
+        : "";
+      if (fromShared) return fromShared;
+      try {
+        return String(localStorage.getItem("ks_gemini_api_key") || "").trim();
+      } catch (_) {
+        return "";
+      }
+    }
+
+    function populateOcrModelSelect() {
+      if (!ocrModelSelect) return;
+      let storedList = [];
+      let selectedModel = "";
+      try {
+        selectedModel = String(localStorage.getItem("ks_gemini_model") || "").trim();
+        const rawList = localStorage.getItem("ks_available_models");
+        if (rawList) {
+          const parsed = JSON.parse(rawList);
+          if (Array.isArray(parsed)) storedList = parsed.filter((m) => typeof m === "string" && m.trim());
+        }
+      } catch (_) {}
+
+      const merged = [...new Set([selectedModel, ...storedList, ...OCR_DEFAULT_MODELS].filter(Boolean))];
+      ocrModelSelect.innerHTML = "";
+      merged.forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        ocrModelSelect.appendChild(opt);
+      });
+      ocrModelSelect.value = selectedModel || OCR_DEFAULT_MODELS[0];
+    }
+
+    function updateOcrApiStatusUI() {
+      const key = getEffectiveGeminiApiKey();
+      if (key) {
+        ocrApiStatusBar.textContent = "✅ AI Studio APIキー設定済（通知ジェネレーターと共通）";
+        ocrApiStatusBar.className = "ocr-api-status ok";
+      } else {
+        ocrApiStatusBar.textContent = "⚠️ AI Studio APIキーが未設定です（設定から登録してください）";
+        ocrApiStatusBar.className = "ocr-api-status warn";
+      }
+      runOcrParseBtn.disabled = ocrIsRunning || ocrUploadedFiles.length === 0 || !key;
+    }
+
+    function setOcrModalStep(stepNum) {
+      const isStep2 = stepNum === 2;
+      ocrStep1Pane.style.display = isStep2 ? "none" : "flex";
+      ocrStep2Pane.style.display = isStep2 ? "flex" : "none";
+      ocrStepBadge1.className = "ocr-step-pill " + (isStep2 ? "done" : "active");
+      ocrStepBadge2.className = "ocr-step-pill " + (isStep2 ? "active" : "");
+    }
+
+    function renderOcrFileGrid() {
+      ocrFileList.innerHTML = "";
+      ocrFileCountLabel.textContent = `選択中の画像：${ocrUploadedFiles.length}枚`;
+      ocrClearFilesBtn.disabled = ocrIsRunning || ocrUploadedFiles.length === 0;
+      updateOcrApiStatusUI();
+
+      ocrUploadedFiles.forEach((item, idx) => {
+        const card = document.createElement("div");
+        card.className = "ocr-file-card";
+
+        const img = document.createElement("img");
+        img.src = item.previewUrl;
+        img.alt = item.name;
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "ocr-file-name";
+        nameEl.textContent = `${idx + 1}. ${item.name}`;
+        nameEl.title = item.name;
+
+        const rmBtn = document.createElement("button");
+        rmBtn.type = "button";
+        rmBtn.className = "ocr-file-remove";
+        rmBtn.textContent = "×";
+        rmBtn.title = "この画像を削除";
+        rmBtn.disabled = ocrIsRunning;
+        rmBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          URL.revokeObjectURL(item.previewUrl);
+          ocrUploadedFiles.splice(idx, 1);
+          renderOcrFileGrid();
+        });
+
+        card.append(img, nameEl, rmBtn);
+        ocrFileList.appendChild(card);
+      });
+    }
+
+    function clearOcrUploadedFiles() {
+      ocrUploadedFiles.forEach((item) => {
+        try { URL.revokeObjectURL(item.previewUrl); } catch (_) {}
+      });
+      ocrUploadedFiles = [];
+      renderOcrFileGrid();
+    }
+
+    function addOcrImageFiles(fileList) {
+      const files = Array.from(fileList || []).filter((f) => f && f.type && f.type.startsWith("image/"));
+      if (files.length === 0) return;
+      files.forEach((file) => {
+        ocrUploadedFiles.push({
+          file,
+          name: file.name || `screenshot_${ocrUploadedFiles.length + 1}.png`,
+          previewUrl: URL.createObjectURL(file)
+        });
+      });
+      ocrErrorBox.textContent = "";
+      renderOcrFileGrid();
+    }
+
+    function buildOcrModelFallbackChain() {
+      const primary = (ocrModelSelect && ocrModelSelect.value ? ocrModelSelect.value.trim() : "") || OCR_DEFAULT_MODELS[0];
+      return [...new Set([primary, ...OCR_DEFAULT_MODELS])];
+    }
+
+    function parsePowerNumber(val) {
+      if (typeof val === "number" && Number.isFinite(val)) return Math.max(0, Math.round(val));
+      const raw = String(val ?? "").normalize("NFKC").replace(/[,，\s]/g, "").trim();
+      if (!raw) return 0;
+      const mMatch = raw.match(/^([\d.]+)\s*[mM]$/);
+      if (mMatch) return Math.round(Number(mMatch[1]) * 1000000);
+      const kMatch = raw.match(/^([\d.]+)\s*[kK]$/);
+      if (kMatch) return Math.round(Number(kMatch[1]) * 1000);
+      const bMatch = raw.match(/^([\d.]+)\s*[bB]$/);
+      if (bMatch) return Math.round(Number(bMatch[1]) * 1000000000);
+      const okuMatch = raw.match(/^([\d.]+)\s*億$/);
+      if (okuMatch) return Math.round(Number(okuMatch[1]) * 100000000);
+      const manMatch = raw.match(/^([\d.]+)\s*万$/);
+      if (manMatch) return Math.round(Number(manMatch[1]) * 10000);
+      const digitsOnly = raw.replace(/[^\d.]/g, "");
+      const num = Number(digitsOnly);
+      return Number.isFinite(num) ? Math.max(0, Math.round(num)) : 0;
+    }
+
+    function extractJsonFromModelText(rawText) {
+      let cleaned = String(rawText || "").trim();
+      const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      if (fenceMatch) cleaned = fenceMatch[1].trim();
+      try {
+        return JSON.parse(cleaned);
+      } catch (_) {
+        const firstBrace = cleaned.indexOf("{");
+        const lastBrace = cleaned.lastIndexOf("}");
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+          return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+        }
+        const firstArr = cleaned.indexOf("[");
+        const lastArr = cleaned.lastIndexOf("]");
+        if (firstArr >= 0 && lastArr > firstArr) {
+          return { rows: JSON.parse(cleaned.slice(firstArr, lastArr + 1)) };
+        }
+        throw new Error("AIの応答をJSONとして解析できませんでした");
+      }
+    }
+
+    async function callGeminiVisionForRosterImage(apiKey, inlineImg, onStatus) {
+      const prompt = [
+        "これはゲーム『Kingshot（キングショット）』の同盟メンバー一覧（または総力ランキング）のスクリーンショットです。",
+        "画面に表示されているプレイヤー行を上から順にすべて読み取り、JSONのみを出力してください（余計な説明文やMarkdownは不要）。",
+        "",
+        "【出力JSONスキーマ】",
+        "{",
+        '  "rows": [',
+        '    { "name": "プレイヤー名", "power": 12345678, "iconBox": [ymin, xmin, ymax, xmax] }',
+        "  ]",
+        "}",
+        "",
+        "【ルール】",
+        "1. name: プレイヤー名のみを正確に転記（絵文字・記号・日本語・英字そのまま）。同盟タグ（例: [RBN]）や役職（R4/R5/盟主）、オンライン表示、順位番号は除外してください。",
+        "2. power: 総力を半角整数で出力（カンマ除去。もし 12.3M / 450.2K / 1234万 等で省略表記されていれば整数に換算。読み取れない場合は 0）。",
+        "3. iconBox: そのプレイヤー行の左側にあるプロフィールアイコン（正方形または角丸の顔・アバター画像部分）の座標を [ymin, xmin, ymax, xmax] の整数（0〜1000の正規化座標）で正確に指定してください。アイコンが見切れて取得できない場合のみ null にしてください。",
+        "4. 上下端で名前が途中までしか見えず判読できない見切れ行や、ヘッダー・タブ・ボタンなどのUI要素は除外してください。"
+      ].join("\n");
+
+      const modelsToTry = buildOcrModelFallbackChain();
+      let lastError = null;
+
+      for (let i = 0; i < modelsToTry.length; i++) {
+        const modelName = modelsToTry[i];
+        const maxRetries = 2;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          if (onStatus) {
+            onStatus(attempt > 1 ? `${modelName} で再試行中 (${attempt}/${maxRetries})...` : `${modelName} で解析中...`);
+          }
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    parts: [
+                      { text: prompt },
+                      { inline_data: { mime_type: inlineImg.mimeType, data: inlineImg.data } }
+                    ]
+                  }
+                ],
+                generationConfig: {
+                  temperature: 0.1,
+                  responseMimeType: "application/json"
+                }
+              })
+            });
+
+            let data = null;
+            try { data = await res.json(); } catch (_) {}
+
+            if (!res.ok) {
+              const errMsg = data?.error?.message || `HTTP ${res.status}`;
+              const isOverloaded =
+                res.status === 429 ||
+                res.status === 503 ||
+                /high demand|overloaded|unavailable|resource exhausted/i.test(errMsg);
+              if (isOverloaded) {
+                lastError = new Error(`[${modelName}] ${errMsg}`);
+                if (attempt < maxRetries) {
+                  await new Promise((r) => setTimeout(r, 1400 * attempt));
+                  continue;
+                }
+                break; // 次のフォールバックモデルへ
+              }
+              throw new Error(`[${modelName}] ${errMsg}`);
+            }
+
+            const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            if (!rawText) throw new Error(`[${modelName}] 応答テキストが空でした`);
+            const parsed = extractJsonFromModelText(rawText);
+            const rows = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.rows) ? parsed.rows : [];
+            return { rows, modelUsed: modelName };
+          } catch (err) {
+            lastError = err;
+            if (attempt < maxRetries && /Failed to fetch|NetworkError/i.test(err.message || "")) {
+              await new Promise((r) => setTimeout(r, 1200));
+              continue;
+            }
+            if (i < modelsToTry.length - 1 && /429|503|high demand|overloaded|unavailable|not found/i.test(err.message || "")) {
+              break;
+            }
+            throw err;
+          }
+        }
+      }
+      throw lastError || new Error("AI解析に失敗しました");
+    }
+
+    function getExistingNamedMembers() {
+      return members.filter((m) => String(m.name || "").trim() !== "");
+    }
+
+    function getLinkedOldIdSet(exceptRowKey = null) {
+      const set = new Set();
+      ocrReviewRows.forEach((row) => {
+        if (!row.include) return;
+        if (exceptRowKey !== null && row.rowKey === exceptRowKey) return;
+        if (row.linkedOldId != null) set.add(row.linkedOldId);
+      });
+      return set;
+    }
+
+    function computeBestRenameSuggestion(row, unlinkedOldMembers) {
+      if (row.linkedOldId != null || !unlinkedOldMembers.length) return null;
+      const p = Number(row.power) || 0;
+      if (p <= 0) return null;
+      let best = null;
+      let bestDiffRatio = Infinity;
+      unlinkedOldMembers.forEach((oldM) => {
+        const op = Number(oldM.power) || 0;
+        if (op <= 0) return;
+        const ratio = Math.abs(p - op) / Math.max(p, op);
+        if (ratio < bestDiffRatio) {
+          bestDiffRatio = ratio;
+          best = oldM;
+        }
+      });
+      if (best && bestDiffRatio <= 0.18) {
+        return { oldMember: best, diffRatio: bestDiffRatio };
+      }
+      return null;
+    }
+
+    function buildOcrDiffModelFromParsed(parsedEntries) {
+      const existingNamed = getExistingNamedMembers();
+      const existingByNorm = new Map();
+      existingNamed.forEach((m) => {
+        const key = normalizeMemberNameKey(m.name);
+        if (key && !existingByNorm.has(key)) existingByNorm.set(key, m);
+      });
+
+      const usedOldIds = new Set();
+      ocrMissingActionByOldId = {};
+      ocrRowSeq = 1;
+
+      ocrReviewRows = parsedEntries.map((entry) => {
+        const norm = normalizeMemberNameKey(entry.name);
+        const matchedOld = norm && existingByNorm.has(norm) && !usedOldIds.has(existingByNorm.get(norm).id)
+          ? existingByNorm.get(norm)
+          : null;
+        if (matchedOld) usedOldIds.add(matchedOld.id);
+
+        const hasNewIcon = !!entry.icon;
+        const hasOldIcon = !!(matchedOld && matchedOld.icon);
+        const iconMode = hasNewIcon ? "new" : hasOldIcon ? "old" : "none";
+
+        return {
+          rowKey: `ocr_${ocrRowSeq++}`,
+          include: true,
+          name: entry.name,
+          power: entry.power,
+          newIcon: entry.icon || "",
+          linkedOldId: matchedOld ? matchedOld.id : null,
+          autoMatched: !!matchedOld,
+          iconMode
+        };
+      });
+
+      existingNamed.forEach((m) => {
+        ocrMissingActionByOldId[m.id] = "remove";
+      });
+
+      const hasAnyAttention =
+        ocrReviewRows.some((r) => !r.autoMatched) ||
+        existingNamed.some((m) => !usedOldIds.has(m.id));
+      ocrActiveFilter = hasAnyAttention ? "attention" : "all";
+    }
+
+    function rematchOcrRowsByName() {
+      const existingNamed = getExistingNamedMembers();
+      const existingByNorm = new Map();
+      existingNamed.forEach((m) => {
+        const key = normalizeMemberNameKey(m.name);
+        if (key && !existingByNorm.has(key)) existingByNorm.set(key, m);
+      });
+
+      const usedOldIds = new Set(
+        ocrReviewRows.filter((r) => r.include && r.linkedOldId != null).map((r) => r.linkedOldId)
+      );
+
+      let matchedCount = 0;
+      ocrReviewRows.forEach((row) => {
+        if (!row.include || row.linkedOldId != null) return;
+        const norm = normalizeMemberNameKey(row.name);
+        const candidate = norm ? existingByNorm.get(norm) : null;
+        if (candidate && !usedOldIds.has(candidate.id)) {
+          row.linkedOldId = candidate.id;
+          row.autoMatched = true;
+          if (!row.newIcon && candidate.icon) row.iconMode = "old";
+          usedOldIds.add(candidate.id);
+          matchedCount++;
+        }
+      });
+
+      renderOcrStep2UI();
+      RBNSuite.showToast(
+        matchedCount > 0 ? `🔄 ${matchedCount}名を既存名簿と再照合しました` : "新たに名前一致したメンバーはありませんでした",
+        matchedCount > 0 ? "ok" : "info"
+      );
+    }
+
+    function getEffectiveRowIcon(row, oldMember) {
+      if (row.iconMode === "none") return "";
+      if (row.iconMode === "old") return oldMember && oldMember.icon ? oldMember.icon : "";
+      if (row.newIcon) return row.newIcon;
+      return oldMember && oldMember.icon ? oldMember.icon : "";
+    }
+
+    function formatOldCoordLabel(oldM) {
+      if (!oldM || oldM.x === null || oldM.y === null) return "未配置";
+      const g = gridToGame(oldM.x, oldM.y);
+      return `X:${g.x}, Y:${g.y}`;
+    }
+
+    function renderOcrStep2UI() {
+      const existingNamed = getExistingNamedMembers();
+      const existingById = new Map(existingNamed.map((m) => [m.id, m]));
+      const linkedSet = getLinkedOldIdSet();
+      const unlinkedMissing = existingNamed.filter((m) => !linkedSet.has(m.id));
+
+      // サマリー集計
+      let cntMatched = 0;
+      let cntRenamed = 0;
+      let cntNew = 0;
+      ocrReviewRows.forEach((r) => {
+        if (!r.include || !String(r.name || "").trim()) return;
+        if (r.linkedOldId != null) {
+          const oldM = existingById.get(r.linkedOldId);
+          if (oldM && normalizeMemberNameKey(oldM.name) === normalizeMemberNameKey(r.name)) {
+            cntMatched++;
+          } else {
+            cntRenamed++;
+          }
+        } else {
+          cntNew++;
+        }
+      });
+      let cntKeptMissing = 0;
+      let cntRemovedMissing = 0;
+      unlinkedMissing.forEach((m) => {
+        if (ocrMissingActionByOldId[m.id] === "keep") cntKeptMissing++;
+        else cntRemovedMissing++;
+      });
+      const finalTotal = cntMatched + cntRenamed + cntNew + cntKeptMissing;
+
+      ocrSummaryBar.innerHTML = [
+        `<span class="ocr-stat-chip matched">✅ 継続 ${cntMatched}名</span>`,
+        `<span class="ocr-stat-chip renamed">🔄 名前変更 ${cntRenamed}名</span>`,
+        `<span class="ocr-stat-chip added">🆕 新規 ${cntNew}名</span>`,
+        `<span class="ocr-stat-chip kept">📌 撮り漏れ残す ${cntKeptMissing}名</span>`,
+        `<span class="ocr-stat-chip removed">🗑️ 除外 ${cntRemovedMissing}名</span>`,
+        `<span class="ocr-stat-chip" style="margin-left:auto; ${finalTotal > ROSTER_LIMIT ? "border-color:#ef4444; color:#fca5a5;" : ""}">最終合計：${finalTotal} / ${ROSTER_LIMIT}名</span>`
+      ].join("");
+
+      if (finalTotal > ROSTER_LIMIT) {
+        ocrOverLimitWarn.style.display = "block";
+        ocrOverLimitWarn.textContent = `⚠️ 合計が上限（${ROSTER_LIMIT}名）を ${finalTotal - ROSTER_LIMIT}名 超えています。不要な行のチェックを外すか、下の「いなくなった人」を除外にして調整してください。`;
+        applyOcrDiffBtn.disabled = true;
+      } else {
+        ocrOverLimitWarn.style.display = "none";
+        applyOcrDiffBtn.disabled = finalTotal === 0;
+      }
+
+      // フィルタボタン状態
+      ocrFilterTabs.querySelectorAll("button[data-ocr-filter]").forEach((b) => {
+        b.classList.toggle("active", b.dataset.ocrFilter === ocrActiveFilter);
+      });
+
+      // 総力降順で表示用順位を計算
+      const sortedRows = [...ocrReviewRows].sort((a, b) => (Number(b.power) || 0) - (Number(a.power) || 0));
+
+      ocrDiffList.innerHTML = "";
+      let visibleCount = 0;
+
+      sortedRows.forEach((row, idx) => {
+        const oldM = row.linkedOldId != null ? existingById.get(row.linkedOldId) : null;
+        const isExactMatched = !!(oldM && normalizeMemberNameKey(oldM.name) === normalizeMemberNameKey(row.name));
+        const statusKind = oldM ? (isExactMatched ? "matched" : "renamed") : "new";
+
+        if (ocrActiveFilter === "attention" && statusKind === "matched" && row.include) return;
+        if (ocrActiveFilter === "matched" && statusKind !== "matched") return;
+        visibleCount++;
+
+        const card = document.createElement("div");
+        card.className = `ocr-row-card status-${statusKind}${row.include ? "" : " excluded"}`;
+
+        // Top row
+        const top = document.createElement("div");
+        top.className = "ocr-row-top";
+
+        const chkLabel = document.createElement("label");
+        chkLabel.style.cssText = "display:inline-flex; align-items:center; gap:4px; cursor:pointer; color:#e2e8f0; font-weight:700;";
+        const chk = document.createElement("input");
+        chk.type = "checkbox";
+        chk.checked = row.include;
+        chk.addEventListener("change", () => {
+          row.include = chk.checked;
+          renderOcrStep2UI();
+        });
+        chkLabel.append(chk, document.createTextNode(`#${idx + 1}`));
+
+        const stBadge = document.createElement("span");
+        stBadge.className = `ocr-badge ${statusKind}`;
+        stBadge.textContent =
+          statusKind === "matched" ? "✅ 継続（名前一致）" :
+          statusKind === "renamed" ? `🔄 名前変更（旧：${oldM.name}）` :
+          "🆕 新規／名前変更候補";
+
+        const coordBadge = document.createElement("span");
+        coordBadge.className = "ocr-badge coord";
+        coordBadge.textContent = oldM
+          ? `📍 座標引継：${formatOldCoordLabel(oldM)}`
+          : "📍 未配置で追加";
+
+        top.append(chkLabel, stBadge, coordBadge);
+
+        const suggestion = statusKind === "new" && row.include
+          ? computeBestRenameSuggestion(row, unlinkedMissing)
+          : null;
+        if (suggestion) {
+          const sugBtn = document.createElement("button");
+          sugBtn.type = "button";
+          sugBtn.className = "ocr-badge suggest";
+          sugBtn.style.cursor = "pointer";
+          sugBtn.textContent = `💡 名前変更候補「${suggestion.oldMember.name}」と紐づけ`;
+          sugBtn.title = `総力が近い未照合メンバー（旧総力: ${Number(suggestion.oldMember.power).toLocaleString()} / ${formatOldCoordLabel(suggestion.oldMember)}）`;
+          sugBtn.addEventListener("click", () => {
+            row.linkedOldId = suggestion.oldMember.id;
+            row.autoMatched = false;
+            if (!row.newIcon && suggestion.oldMember.icon) row.iconMode = "old";
+            renderOcrStep2UI();
+          });
+          top.appendChild(sugBtn);
+        }
+
+        // Main row: Avatar + Name + Power + Icon Mode
+        const main = document.createElement("div");
+        main.className = "ocr-row-main";
+
+        const avBox = document.createElement("div");
+        avBox.className = "ocr-avatar-preview";
+        avBox.title = "タップしてこの行のアイコン画像を手動差し替え";
+        const effectiveIcon = getEffectiveRowIcon(row, oldM);
+        if (effectiveIcon) {
+          const img = document.createElement("img");
+          img.src = effectiveIcon;
+          img.alt = "";
+          avBox.appendChild(img);
+        } else {
+          avBox.textContent = "👤";
+        }
+        avBox.addEventListener("click", () => {
+          pendingOcrIconRowKey = row.rowKey;
+          ocrSingleIconInput.value = "";
+          ocrSingleIconInput.click();
+        });
+
+        const nameInp = document.createElement("input");
+        nameInp.type = "text";
+        nameInp.value = row.name;
+        nameInp.placeholder = "プレイヤー名";
+        nameInp.addEventListener("input", () => {
+          row.name = nameInp.value;
+        });
+
+        const powerInp = document.createElement("input");
+        powerInp.type = "number";
+        powerInp.value = String(row.power || 0);
+        powerInp.placeholder = "総力";
+        powerInp.addEventListener("change", () => {
+          const v = Number(powerInp.value);
+          row.power = Number.isFinite(v) && v >= 0 ? Math.round(v) : 0;
+          renderOcrStep2UI();
+        });
+
+        const iconSel = document.createElement("select");
+        iconSel.style.cssText = "padding:4px 6px; font-size:11.5px;";
+        const optNew = document.createElement("option");
+        optNew.value = "new";
+        optNew.textContent = row.newIcon ? "🖼️ 新アイコン" : "🖼️ 新アイコン(なし)";
+        const optOld = document.createElement("option");
+        optOld.value = "old";
+        optOld.textContent = oldM && oldM.icon ? "↩️ 旧アイコン維持" : "↩️ 旧アイコン(なし)";
+        const optNone = document.createElement("option");
+        optNone.value = "none";
+        optNone.textContent = "🚫 アイコンなし";
+        iconSel.append(optNew, optOld, optNone);
+        iconSel.value = row.iconMode;
+        iconSel.addEventListener("change", () => {
+          row.iconMode = iconSel.value;
+          renderOcrStep2UI();
+        });
+
+        main.append(avBox, nameInp, powerInp, iconSel);
+
+        // Controls row: link to existing member (rename / unlink)
+        const controls = document.createElement("div");
+        controls.className = "ocr-row-controls";
+
+        if (!isExactMatched) {
+          const linkLabel = document.createElement("span");
+          linkLabel.style.color = "var(--muted)";
+          linkLabel.textContent = "座標の紐づけ先：";
+
+          const linkSel = document.createElement("select");
+          const optNewMember = document.createElement("option");
+          optNewMember.value = "";
+          optNewMember.textContent = "🆕 新規メンバー（未配置で追加）";
+          linkSel.appendChild(optNewMember);
+
+          // 選択肢：現在紐づけ済みの旧メンバー + 他の未紐づけ旧メンバー（総力が近い順）
+          const candidateOlds = existingNamed
+            .filter((m) => m.id === row.linkedOldId || !linkedSet.has(m.id))
+            .sort((a, b) => {
+              const p = Number(row.power) || 0;
+              const da = Math.abs((Number(a.power) || 0) - p);
+              const db = Math.abs((Number(b.power) || 0) - p);
+              return da - db;
+            });
+
+          candidateOlds.forEach((m) => {
+            const opt = document.createElement("option");
+            opt.value = String(m.id);
+            opt.textContent = `🔄 名前変更：${m.name}（総力 ${Number(m.power || 0).toLocaleString()} / ${formatOldCoordLabel(m)}）`;
+            linkSel.appendChild(opt);
+          });
+
+          linkSel.value = row.linkedOldId != null ? String(row.linkedOldId) : "";
+          linkSel.addEventListener("change", () => {
+            const nextId = linkSel.value ? Number(linkSel.value) : null;
+            if (nextId != null) {
+              ocrReviewRows.forEach((other) => {
+                if (other.rowKey !== row.rowKey && other.linkedOldId === nextId) {
+                  other.linkedOldId = null;
+                }
+              });
+            }
+            row.linkedOldId = nextId;
+            row.autoMatched = false;
+            const linked = nextId != null ? existingById.get(nextId) : null;
+            if (!row.newIcon && linked && linked.icon) row.iconMode = "old";
+            renderOcrStep2UI();
+          });
+
+          controls.append(linkLabel, linkSel);
+        }
+
+        card.append(top, main);
+        if (controls.childNodes.length > 0) card.appendChild(controls);
+        ocrDiffList.appendChild(card);
+      });
+
+      if (visibleCount === 0) {
+        const empty = document.createElement("div");
+        empty.style.cssText = "padding:14px; text-align:center; font-size:12px; color:var(--muted); background:var(--bg); border:1px solid var(--border); border-radius:8px;";
+        empty.textContent =
+          ocrActiveFilter === "attention"
+            ? "✅ 要確認（新規・名前変更候補）はありません。すべて既存メンバーと一致しています。"
+            : "該当するメンバー行はありません。";
+        ocrDiffList.appendChild(empty);
+      }
+
+      // いなくなった人セクション
+      if (unlinkedMissing.length > 0 && ocrActiveFilter !== "matched") {
+        ocrMissingSection.style.display = "flex";
+        ocrMissingList.innerHTML = "";
+        unlinkedMissing.forEach((m) => {
+          const item = document.createElement("div");
+          item.className = "ocr-missing-row";
+
+          const info = document.createElement("div");
+          info.className = "ocr-missing-info";
+
+          const av = document.createElement("div");
+          av.className = "member-avatar-cell";
+          if (m.icon) {
+            const img = document.createElement("img");
+            img.src = m.icon;
+            img.alt = "";
+            av.appendChild(img);
+          } else {
+            av.textContent = "👤";
+          }
+
+          const meta = document.createElement("div");
+          meta.innerHTML = `<div style="font-weight:700; color:#f8fafc;"></div><div style="font-size:11px; color:var(--muted);"></div>`;
+          meta.firstChild.textContent = m.name;
+          meta.lastChild.textContent = `旧総力 ${Number(m.power || 0).toLocaleString()} ｜ ${formatOldCoordLabel(m)}`;
+          info.append(av, meta);
+
+          const sel = document.createElement("select");
+          sel.style.cssText = "padding:4px 6px; font-size:11.5px;";
+          const oRm = document.createElement("option");
+          oRm.value = "remove";
+          oRm.textContent = "🗑️ 脱退として除外（配置も解除）";
+          const oKeep = document.createElement("option");
+          oKeep.value = "keep";
+          oKeep.textContent = "📌 撮り漏れのため残す（座標・アイコン維持）";
+          sel.append(oRm, oKeep);
+          sel.value = ocrMissingActionByOldId[m.id] === "keep" ? "keep" : "remove";
+          sel.addEventListener("change", () => {
+            ocrMissingActionByOldId[m.id] = sel.value;
+            renderOcrStep2UI();
+          });
+
+          item.append(info, sel);
+          ocrMissingList.appendChild(item);
+        });
+      } else {
+        ocrMissingSection.style.display = "none";
+      }
+    }
+
+    async function runOcrExtractionFlow() {
+      if (ocrIsRunning || !isEditable) return;
+      const apiKey = getEffectiveGeminiApiKey();
+      if (!apiKey) {
+        ocrErrorBox.textContent = "AI Studio APIキーが未設定です。「⚙️ APIキー設定」から登録してください。";
+        return;
+      }
+      if (ocrUploadedFiles.length === 0) {
+        ocrErrorBox.textContent = "スクリーンショットを1枚以上追加してください。";
+        return;
+      }
+
+      // 選択モデルを通知ジェネレーターと共通キーに保存
+      if (ocrModelSelect && ocrModelSelect.value) {
+        try { localStorage.setItem("ks_gemini_model", ocrModelSelect.value); } catch (_) {}
+      }
+
+      ocrIsRunning = true;
+      ocrErrorBox.textContent = "";
+      ocrProgressBox.classList.add("show");
+      ocrProgressBox.textContent = "画像を読み込み中...";
+      runOcrParseBtn.disabled = true;
+      ocrClearFilesBtn.disabled = true;
+
+      try {
+        const mergedByNorm = new Map();
+        const orderedKeys = [];
+        let totalRawRows = 0;
+
+        for (let i = 0; i < ocrUploadedFiles.length; i++) {
+          const item = ocrUploadedFiles[i];
+          ocrProgressBox.textContent = `画像 ${i + 1} / ${ocrUploadedFiles.length}（${item.name}）を準備中...`;
+
+          const imgEl = await loadImageElementFromBlob(item.file);
+          const inlineImg = imageToResizedBase64ForGemini(imgEl, 1600);
+
+          const { rows, modelUsed } = await callGeminiVisionForRosterImage(apiKey, inlineImg, (msg) => {
+            ocrProgressBox.textContent = `画像 ${i + 1} / ${ocrUploadedFiles.length}（${item.name}）：${msg}`;
+          });
+
+          ocrProgressBox.textContent = `画像 ${i + 1} / ${ocrUploadedFiles.length}：${rows.length}名検出（${modelUsed}）→ アイコン切り抜き中...`;
+
+          rows.forEach((rawRow) => {
+            const name = String(rawRow?.name ?? "").trim();
+            if (!name) return;
+            totalRawRows++;
+            const power = parsePowerNumber(rawRow?.power);
+            const iconBox = Array.isArray(rawRow?.iconBox) ? rawRow.iconBox : null;
+            const iconData = iconBox ? cropIconFromImage(imgEl, iconBox) : "";
+            const isCleanBox = !!(
+              iconBox &&
+              iconBox.length === 4 &&
+              Number(iconBox[0]) > 15 &&
+              Number(iconBox[2]) < 985
+            );
+
+            const norm = normalizeMemberNameKey(name);
+            if (!norm) return;
+
+            if (!mergedByNorm.has(norm)) {
+              mergedByNorm.set(norm, { name, power, icon: iconData, cleanIcon: isCleanBox });
+              orderedKeys.push(norm);
+            } else {
+              const prev = mergedByNorm.get(norm);
+              if (power > prev.power) prev.power = power;
+              if (iconData && (!prev.icon || (!prev.cleanIcon && isCleanBox))) {
+                prev.icon = iconData;
+                prev.cleanIcon = isCleanBox;
+              }
+            }
+          });
+        }
+
+        const dedupedList = orderedKeys.map((k) => mergedByNorm.get(k));
+        if (dedupedList.length === 0) {
+          throw new Error("画像からメンバー行を読み取れませんでした。メンバー一覧がはっきり写ったスクショでお試しください。");
+        }
+
+        dedupedList.sort((a, b) => (b.power || 0) - (a.power || 0));
+        buildOcrDiffModelFromParsed(dedupedList);
+        renderOcrStep2UI();
+        setOcrModalStep(2);
+
+        RBNSuite.showToast(
+          `🤖 ${dedupedList.length}名を読み取りました（延べ${totalRawRows}件から重複統合）。内容を確認してください。`,
+          "ok",
+          3600
+        );
+      } catch (err) {
+        ocrErrorBox.textContent = `解析エラー：${err?.message || err}`;
+      } finally {
+        ocrIsRunning = false;
+        ocrProgressBox.classList.remove("show");
+        renderOcrFileGrid();
+      }
+    }
+
+    function applyOcrDiffToRoster() {
+      if (!isEditable) return;
+      const existingNamed = getExistingNamedMembers();
+      const existingById = new Map(existingNamed.map((m) => [m.id, m]));
+      const linkedSet = getLinkedOldIdSet();
+
+      const nextList = [];
+      const usedIds = new Set();
+
+      // 1) スクショ解析（継続・名前変更・新規）
+      ocrReviewRows.forEach((row) => {
+        if (!row.include) return;
+        const cleanName = String(row.name || "").trim();
+        if (!cleanName) return;
+
+        const oldM = row.linkedOldId != null ? existingById.get(row.linkedOldId) : null;
+        const chosenIcon = getEffectiveRowIcon(row, oldM);
+
+        if (oldM && !usedIds.has(oldM.id)) {
+          usedIds.add(oldM.id);
+          nextList.push({
+            id: oldM.id,
+            name: cleanName,
+            power: Number.isFinite(Number(row.power)) ? Math.max(0, Math.round(Number(row.power))) : 0,
+            type: FACILITY_TYPES[oldM.type] ? oldM.type : "city",
+            x: Number.isInteger(oldM.x) ? oldM.x : null,
+            y: Number.isInteger(oldM.y) ? oldM.y : null,
+            icon: chosenIcon
+          });
+        } else {
+          nextList.push({
+            id: null,
+            name: cleanName,
+            power: Number.isFinite(Number(row.power)) ? Math.max(0, Math.round(Number(row.power))) : 0,
+            type: "city",
+            x: null,
+            y: null,
+            icon: chosenIcon
+          });
+        }
+      });
+
+      // 2) いなくなった人のうち「撮り漏れのため残す」指定メンバー
+      existingNamed.forEach((oldM) => {
+        if (linkedSet.has(oldM.id)) return;
+        if (ocrMissingActionByOldId[oldM.id] !== "keep") return;
+        if (usedIds.has(oldM.id)) return;
+        usedIds.add(oldM.id);
+        nextList.push({
+          id: oldM.id,
+          name: oldM.name,
+          power: oldM.power,
+          type: FACILITY_TYPES[oldM.type] ? oldM.type : "city",
+          x: Number.isInteger(oldM.x) ? oldM.x : null,
+          y: Number.isInteger(oldM.y) ? oldM.y : null,
+          icon: typeof oldM.icon === "string" ? oldM.icon : ""
+        });
+      });
+
+      if (nextList.length > ROSTER_LIMIT) {
+        RBNSuite.showToast(`⚠️ 合計が${ROSTER_LIMIT}名を超えています（現在${nextList.length}名）`, "error", 3200);
+        return;
+      }
+
+      // 反映直前に自動バックアップを1件残す
+      recordBackupsOnUnlockEdit();
+
+      // 空きID（1..ROSTER_LIMIT）を新規メンバーと空き枠へ割り当て
+      const freeIds = [];
+      for (let i = 1; i <= ROSTER_LIMIT; i++) {
+        if (!usedIds.has(i)) freeIds.push(i);
+      }
+
+      nextList.forEach((item) => {
+        if (item.id == null) {
+          item.id = freeIds.shift();
+        }
+      });
+
+      while (nextList.length < ROSTER_LIMIT) {
+        nextList.push({
+          id: freeIds.shift() || nextList.length + 1,
+          name: "",
+          power: 0,
+          type: "city",
+          x: null,
+          y: null,
+          icon: ""
+        });
+      }
+
+      members = nextList;
+      resortByPower();
+
+      selectedTarget = { kind: "member", id: orderedMemberIds[0] || 1 };
+      selectedEmptyGridBase = null;
+      isMoveMode = false;
+      const selectedEnt = getSelectedEntity();
+      if (selectedEnt) {
+        facilityTypeSelect.value = selectedEnt.type;
+        itemNameInput.value = selectedEnt.name;
+      }
+
+      ocrImportModal.classList.remove("open");
+      renderRoster();
+      syncToolbar();
+      render();
+      persistChanges();
+
+      const namedCount = members.filter((m) => String(m.name || "").trim() !== "").length;
+      const iconCount = members.filter((m) => !!m.icon).length;
+      statusMsg.classList.add("ok");
+      statusMsg.textContent = `スクショから名簿（${namedCount}名・アイコン${iconCount}件）を反映しました（反映前バックアップ保存済）。`;
+      RBNSuite.showToast(`✅ 名簿${namedCount}名・アイコン${iconCount}件を反映しました`, "ok", 3200);
+    }
+
+    if (openOcrImportBtn) {
+      openOcrImportBtn.addEventListener("click", () => {
+        if (!isEditable) return;
+        populateOcrModelSelect();
+        updateOcrApiStatusUI();
+        ocrErrorBox.textContent = "";
+        setOcrModalStep(1);
+        renderOcrFileGrid();
+        ocrImportModal.classList.add("open");
+      });
+    }
+
+    if (ocrOpenSettingsFromModalBtn) {
+      ocrOpenSettingsFromModalBtn.addEventListener("click", () => {
+        settingsModalMsg.textContent = "";
+        syncSettingsModalInputs();
+        settingsModal.classList.add("open");
+      });
+    }
+
+    if (ocrDropZone && ocrFileInput) {
+      ocrDropZone.addEventListener("click", () => {
+        if (ocrIsRunning) return;
+        ocrFileInput.value = "";
+        ocrFileInput.click();
+      });
+      ocrDropZone.addEventListener("keydown", (e) => {
+        if ((e.key === "Enter" || e.key === " ") && !ocrIsRunning) {
+          e.preventDefault();
+          ocrFileInput.value = "";
+          ocrFileInput.click();
+        }
+      });
+      ocrDropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        ocrDropZone.classList.add("dragover");
+      });
+      ocrDropZone.addEventListener("dragleave", () => {
+        ocrDropZone.classList.remove("dragover");
+      });
+      ocrDropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        ocrDropZone.classList.remove("dragover");
+        if (ocrIsRunning) return;
+        addOcrImageFiles(e.dataTransfer?.files);
+      });
+      ocrFileInput.addEventListener("change", (e) => {
+        addOcrImageFiles(e.target.files);
+      });
+    }
+
+    // モーダル表示中の Ctrl+V 画像貼り付けに対応
+    document.addEventListener("paste", (e) => {
+      if (!ocrImportModal || !ocrImportModal.classList.contains("open")) return;
+      if (ocrStep1Pane.style.display === "none" || ocrIsRunning) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const pastedFiles = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.startsWith("image/")) {
+          const f = items[i].getAsFile();
+          if (f) pastedFiles.push(f);
+        }
+      }
+      if (pastedFiles.length > 0) {
+        e.preventDefault();
+        addOcrImageFiles(pastedFiles);
+        RBNSuite.showToast(`📋 画像${pastedFiles.length}枚を貼り付けました`, "ok", 1800);
+      }
+    });
+
+    if (ocrClearFilesBtn) {
+      ocrClearFilesBtn.addEventListener("click", () => {
+        if (ocrIsRunning) return;
+        clearOcrUploadedFiles();
+      });
+    }
+
+    if (runOcrParseBtn) {
+      runOcrParseBtn.addEventListener("click", runOcrExtractionFlow);
+    }
+
+    if (closeOcrStep1Btn) {
+      closeOcrStep1Btn.addEventListener("click", () => {
+        if (ocrIsRunning) return;
+        ocrImportModal.classList.remove("open");
+      });
+    }
+
+    if (closeOcrStep2Btn) {
+      closeOcrStep2Btn.addEventListener("click", () => {
+        ocrImportModal.classList.remove("open");
+      });
+    }
+
+    if (ocrBackToStep1Btn) {
+      ocrBackToStep1Btn.addEventListener("click", () => {
+        setOcrModalStep(1);
+      });
+    }
+
+    if (ocrImportModal) {
+      ocrImportModal.addEventListener("click", (e) => {
+        if (e.target === ocrImportModal && !ocrIsRunning) {
+          ocrImportModal.classList.remove("open");
+        }
+      });
+    }
+
+    if (ocrFilterTabs) {
+      ocrFilterTabs.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-ocr-filter]");
+        if (!btn) return;
+        ocrActiveFilter = btn.dataset.ocrFilter || "all";
+        renderOcrStep2UI();
+      });
+    }
+
+    if (ocrReMatchBtn) {
+      ocrReMatchBtn.addEventListener("click", rematchOcrRowsByName);
+    }
+
+    if (ocrAddManualRowBtn) {
+      ocrAddManualRowBtn.addEventListener("click", () => {
+        ocrReviewRows.unshift({
+          rowKey: `ocr_${ocrRowSeq++}`,
+          include: true,
+          name: "",
+          power: 0,
+          newIcon: "",
+          linkedOldId: null,
+          autoMatched: false,
+          iconMode: "none"
+        });
+        ocrActiveFilter = "all";
+        renderOcrStep2UI();
+      });
+    }
+
+    if (ocrMissingKeepAllBtn) {
+      ocrMissingKeepAllBtn.addEventListener("click", () => {
+        getExistingNamedMembers().forEach((m) => {
+          ocrMissingActionByOldId[m.id] = "keep";
+        });
+        renderOcrStep2UI();
+      });
+    }
+
+    if (ocrMissingRemoveAllBtn) {
+      ocrMissingRemoveAllBtn.addEventListener("click", () => {
+        getExistingNamedMembers().forEach((m) => {
+          ocrMissingActionByOldId[m.id] = "remove";
+        });
+        renderOcrStep2UI();
+      });
+    }
+
+    if (ocrSingleIconInput) {
+      ocrSingleIconInput.addEventListener("change", async (e) => {
+        const file = e.target.files && e.target.files[0];
+        const key = pendingOcrIconRowKey;
+        pendingOcrIconRowKey = null;
+        if (!file || !key) return;
+        try {
+          const dataUrl = await compressImageFileToAvatar(file);
+          const target = ocrReviewRows.find((r) => r.rowKey === key);
+          if (!target) return;
+          target.newIcon = dataUrl;
+          target.iconMode = "new";
+          renderOcrStep2UI();
+          RBNSuite.showToast("🖼️ アイコン画像を差し替えました", "ok", 1800);
+        } catch (_) {
+          RBNSuite.showToast("⚠️ アイコン画像の読み込みに失敗しました", "error");
+        }
+      });
+    }
+
+    if (applyOcrDiffBtn) {
+      applyOcrDiffBtn.addEventListener("click", applyOcrDiffToRoster);
+    }
+
+    // 設定保存時にOCRモーダル側のAPIキー表示も同期
+    if (saveSettingsModalBtn) {
+      saveSettingsModalBtn.addEventListener("click", () => {
+        updateOcrApiStatusUI();
+      });
+    }
+
     // 全モーダル・凡例で ESC キー閉じ対応
     RBNSuite.enableModalEscapeClose(() => {
       settingsModal.classList.remove("open");
@@ -4358,6 +6169,7 @@
       pinModal.classList.remove("open");
       backupModal.classList.remove("open");
       importModal.classList.remove("open");
+      if (!ocrIsRunning && ocrImportModal) ocrImportModal.classList.remove("open");
       if (mapLegendBox) mapLegendBox.classList.remove("open");
       if (mapLegendToggleBtn) mapLegendToggleBtn.classList.remove("active");
     });
@@ -4368,6 +6180,7 @@
       sharedSettings = latest;
       firebaseConfig.databaseURL = latest.firebase.databaseUrl;
       syncSettingsModalInputs();
+      updateOcrApiStatusUI();
       if (prevDbUrl !== latest.firebase.databaseUrl) {
         initFirebaseCloud();
       }
