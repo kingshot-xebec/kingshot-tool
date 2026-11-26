@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-title" content="ks tool" />
   <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
-  <link rel="stylesheet" href="./assets/common.css" />
-  <script src="./assets/firebase-init.js"></script>
+  <link rel="stylesheet" href="./assets/common.css?v=20261126b" />
+  <script src="./assets/firebase-init.js?v=20261126b"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -892,6 +892,9 @@
       }
 
       window.RBNSuite.onPlayfulPrefsChange(refreshPortalPlayfulUI);
+      if (typeof window.RBNSuite.onMemberAvatarsChange === "function") {
+        window.RBNSuite.onMemberAvatarsChange(refreshPortalPlayfulUI);
+      }
       window.RBNSuite.ensureMemberAvatarsLoaded(false).then(function (list) {
         refreshPortalPlayfulUI();
         if (list.length > 0 && window.RBNSuite.isPlayfulEnabled("portalPeek")) {

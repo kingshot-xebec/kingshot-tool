@@ -349,6 +349,11 @@
     return function () { prefsListeners.delete(fn); };
   }
 
+  function onMemberAvatarsChange(fn) {
+    if (typeof fn === "function") avatarListeners.add(fn);
+    return function () { avatarListeners.delete(fn); };
+  }
+
   function sanitizeAvatarEntry(m) {
     if (!m || typeof m !== "object") return null;
     const icon = typeof m.icon === "string" ? m.icon.trim() : "";
@@ -993,6 +998,7 @@
     savePlayfulPrefs,
     isPlayfulEnabled,
     onPlayfulPrefsChange,
+    onMemberAvatarsChange,
     readLocalAvatarsSync,
     refreshPlayfulAvatarsFromLocal,
     ensureMemberAvatarsLoaded,
