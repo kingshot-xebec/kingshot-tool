@@ -342,12 +342,11 @@
     .map-float-top {
       position: absolute;
       top: 10px;
-      left: 10px;
       right: 10px;
       z-index: 15;
       display: flex;
       align-items: flex-start;
-      justify-content: space-between;
+      justify-content: flex-end;
       gap: 8px;
       pointer-events: none;
     }
@@ -842,6 +841,9 @@
       padding: 9px 14px;
       border-width: 1.5px;
     }
+    body.mobile-mode.has-selection-card .coord-popup {
+      bottom: 104px !important;
+    }
 
     body.mobile-mode {
       padding: 6px 8px;
@@ -1119,12 +1121,11 @@
       </nav>
       <h3 class="brand-title">🗺️ RBN 都市マップ（40×40）</h3>
       <div id="centerBaseBadge" class="info">中心基準 X:386, Y:792</div>
-      <div id="modeBadge" class="mode-badge">🔒 閲覧モード</div>
       <div id="cloudBadge" class="cloud-badge hide-on-mobile">☁️ ローカル保存</div>
     </div>
 
     <div class="header-actions">
-      <button id="toggleEditModeBtn" class="edit-toggle-btn" type="button">編集モードへ切替</button>
+      <button id="toggleEditModeBtn" class="edit-toggle-btn" type="button" title="タップして編集モードへ切替">🔒 閲覧モード</button>
       <div id="coordInfo" class="info hide-on-mobile">選択座標：なし</div>
       <div id="zoomInfo" class="info hide-on-mobile">倍率：100%</div>
       <button id="resetBtn" type="button">表示リセット</button>
@@ -1164,15 +1165,8 @@
     <div id="canvasWrap" class="canvas-wrap">
       <canvas id="mapCanvas"></canvas>
 
-      <!-- マップ上部フローティング：検索バー＆凡例 -->
+      <!-- マップ右上フローティング：凡例 -->
       <div class="map-float-top">
-        <div class="map-search-box">
-          <div class="map-search-input-wrap">
-            <input id="mapQuickSearch" type="text" placeholder="🔍 名前・施設を検索してジャンプ" autocomplete="off" />
-            <button id="mapQuickSearchClear" class="map-search-clear" type="button" aria-label="検索をクリア">✕</button>
-          </div>
-          <div id="mapSearchResults" class="map-search-results" role="listbox"></div>
-        </div>
         <div class="map-legend-wrap">
           <button id="mapLegendToggleBtn" class="map-legend-btn" type="button">？ 凡例</button>
           <div id="mapLegendBox" class="map-legend-box">
@@ -1223,7 +1217,6 @@
         </div>
       </div>
       <div class="roster-filter-bar">
-        <input id="rosterSearchInput" type="text" placeholder="🔍 名前・施設で絞り込み" autocomplete="off" />
         <div id="rosterFilterGroup" class="roster-filter-pills" role="group" aria-label="配置フィルタ">
           <button type="button" class="roster-filter-pill active" data-filter="all">すべて</button>
           <button type="button" class="roster-filter-pill" data-filter="unplaced">未配置</button>
@@ -1731,9 +1724,6 @@
     const mobileViewTabs = document.getElementById("mobileViewTabs");
     const mobileListTabBtn = document.getElementById("mobileListTabBtn");
 
-    const mapQuickSearch = document.getElementById("mapQuickSearch");
-    const mapQuickSearchClear = document.getElementById("mapQuickSearchClear");
-    const mapSearchResults = document.getElementById("mapSearchResults");
     const mapLegendToggleBtn = document.getElementById("mapLegendToggleBtn");
     const mapLegendBox = document.getElementById("mapLegendBox");
     const mapZoomPill = document.getElementById("mapZoomPill");
@@ -1745,7 +1735,6 @@
     const mapSelSub = document.getElementById("mapSelSub");
     const mapSelCloseBtn = document.getElementById("mapSelCloseBtn");
     const mapSelActions = document.getElementById("mapSelActions");
-    const rosterSearchInput = document.getElementById("rosterSearchInput");
     const rosterFilterGroup = document.getElementById("rosterFilterGroup");
 
     const facilityTypeSelect = document.getElementById("facilityTypeSelect");
@@ -1897,8 +1886,9 @@
     let baseOriginY = 0;
 
     let zoom = 1.0;
-    const minZoom = 0.6;
-    const maxZoom = 4.0;
+    const BASE_ZOOM_SCALE = 2.1; // 旧210%相当を基準100%とする
+    const minZoom = 0.35;
+    const maxZoom = 2.5;
     let panX = 0;
     let panY = 0;
 
@@ -2341,8 +2331,8 @@
       document.body.classList.toggle("view-only", !isEditable);
 
       if (isEditable) {
-        modeBadge.textContent = "✏️ 編集モード";
-        toggleEditModeBtn.textContent = "閲覧モードへ戻す";
+        toggleEditModeBtn.textContent = "✏️ 編集モード";
+        toggleEditModeBtn.title = "タップして閲覧モードへ戻す";
 
         if (fromUserUnlock) {
           const result = recordBackupsOnUnlockEdit();
@@ -2352,14 +2342,14 @@
             : `編集モードに切替（直近5件バックアップを保存しました：${result.timestampLabel}）`;
         }
       } else {
-        modeBadge.textContent = "🔒 閲覧モード";
-        toggleEditModeBtn.textContent = "編集モードへ切替";
+        toggleEditModeBtn.textContent = "🔒 閲覧モード";
+        toggleEditModeBtn.title = "タップして編集モードへ切替";
         draggingTarget = null;
         dragPreviewGridBase = null;
         isMoveMode = false;
         hideCoordPopup();
         statusMsg.classList.remove("ok");
-        statusMsg.textContent = "閲覧モード中です。編集するには上部の「編集モードへ切替」を押してください。";
+        statusMsg.textContent = "閲覧モード中です。編集するには上部の「🔒 閲覧モード」ボタンを押してください。";
       }
 
       syncToolbar();
@@ -2708,7 +2698,7 @@
       if (!ent || ent.x === null || ent.y === null) return;
       const runCenter = () => {
         const def = FACILITY_TYPES[ent.type] || FACILITY_TYPES.city;
-        const targetZoom = Math.min(maxZoom, Math.max(zoom, opts.minZoom || 1.9));
+        const targetZoom = Math.min(maxZoom, Math.max(zoom, opts.minZoom || 1.0));
         zoom = targetZoom;
         const { tileW, tileH } = getTileSize();
         const cx = ent.x - (def.size - 1) / 2;
@@ -2743,12 +2733,13 @@
       const maxTileWByWidth = (wrapW - 20) / (totalSpan / 2);
       const maxTileWByHeight = ((wrapH - 20) * 2) / (totalSpan / 2 + 1);
 
-      baseTileW = Math.max(6, Math.floor(Math.min(maxTileWByWidth, maxTileWByHeight)));
-      baseTileH = Math.floor(baseTileW / 2);
+      const fitTileW = Math.max(6, Math.min(maxTileWByWidth, maxTileWByHeight));
+      baseTileW = Math.max(12, Math.round(fitTileW * BASE_ZOOM_SCALE));
+      baseTileH = Math.max(6, Math.round(baseTileW / 2));
 
-      const gridHeight = totalSpan * (baseTileH / 2) + baseTileH;
-      baseOriginX = canvas.width / 2;
-      baseOriginY = Math.max(8, (canvas.height - gridHeight) / 2 + baseTileH / 2);
+      // 基準100%（旧210%相当）でマップ中心（CENTER_GRID_BASE）が画面中央に来るように配置
+      baseOriginX = canvas.width / 2 - (CENTER_GRID_BASE.x - CENTER_GRID_BASE.y) * (baseTileW / 2);
+      baseOriginY = canvas.height / 2 - (CENTER_GRID_BASE.x + CENTER_GRID_BASE.y) * (baseTileH / 2);
 
       render();
     }
@@ -3535,6 +3526,7 @@
           );
         }
         mapSelectionCard.classList.add("show");
+        document.body.classList.add("has-selection-card");
       } else if (selectedEmptyGridBase && isEditable) {
         const gEmpty = gridToGame(selectedEmptyGridBase.x, selectedEmptyGridBase.y);
         mapSelTitle.textContent = `📌 空きマス（X:${gEmpty.x}, Y:${gEmpty.y}）`;
@@ -3547,8 +3539,10 @@
         pBtn.addEventListener("click", () => placeBtn.click());
         mapSelActions.appendChild(pBtn);
         mapSelectionCard.classList.add("show");
+        document.body.classList.add("has-selection-card");
       } else {
         mapSelectionCard.classList.remove("show");
+        document.body.classList.remove("has-selection-card");
       }
     }
 
@@ -4241,7 +4235,7 @@
       const changed = e.changedTouches[0];
       if (changed) {
         const now = Date.now();
-        const movedDist = Math.hypot(changed.clientX - pointerDownClientX, changed.clientY - pointerDownClientY);
+        const movedDist = Math.hypot(changed.clientX - panDragStartX, changed.clientY - panDragStartY);
         if (movedDist < 12 && !draggingTarget && !isMoveMode) {
           const tapGap = now - lastCanvasTapAt;
           const tapDist = Math.hypot(changed.clientX - lastCanvasTapX, changed.clientY - lastCanvasTapY);
@@ -4250,13 +4244,13 @@
             const rect = canvas.getBoundingClientRect();
             const mx = changed.clientX - rect.left;
             const my = changed.clientY - rect.top;
-            if (zoom < 1.65) {
-              zoomAtPoint(2.1, mx, my);
+            if (zoom < 1.35) {
+              zoomAtPoint(1.55, mx, my);
             } else {
               resetMapView();
             }
-            isPointerDown = false;
             isPanning = false;
+            hasMovedDuringPan = false;
             return;
           }
           lastCanvasTapAt = now;
@@ -4281,8 +4275,8 @@
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
-      if (zoom < 1.65) {
-        zoomAtPoint(2.1, mx, my);
+      if (zoom < 1.35) {
+        zoomAtPoint(1.55, mx, my);
       } else {
         resetMapView();
       }
@@ -4292,12 +4286,12 @@
 
     if (mapZoomInBtn) {
       mapZoomInBtn.addEventListener("click", () => {
-        zoomAtPoint(zoom * 1.28, canvas.width / 2, canvas.height / 2);
+        zoomAtPoint(zoom * 1.25, canvas.width / 2, canvas.height / 2);
       });
     }
     if (mapZoomOutBtn) {
       mapZoomOutBtn.addEventListener("click", () => {
-        zoomAtPoint(zoom / 1.28, canvas.width / 2, canvas.height / 2);
+        zoomAtPoint(zoom / 1.25, canvas.width / 2, canvas.height / 2);
       });
     }
     if (mapZoomResetBtn) {
@@ -4324,120 +4318,14 @@
       });
     }
 
-    // マップ上部クイック検索＆ジャンプ
-    function renderMapSearchDropdown() {
-      if (!mapQuickSearch || !mapSearchResults) return;
-      const q = mapQuickSearch.value.trim().toLowerCase();
-      if (mapQuickSearchClear) {
-        mapQuickSearchClear.classList.toggle("show", q.length > 0);
-      }
-      if (!q) {
-        mapSearchResults.classList.remove("open");
-        mapSearchResults.innerHTML = "";
-        return;
-      }
-
-      const ordered = getOrderedMembers();
-      const matches = [];
-      ordered.forEach((m, idx) => {
-        const nm = String(m.name || "").trim();
-        if (!nm) return;
-        if (nm.toLowerCase().includes(q) || String(idx + 1) === q) {
-          matches.push({
-            ent: { ...m, kind: "member" },
-            label: nm,
-            sub: m.x !== null && m.y !== null
-              ? `${idx + 1}位・(${gridToGame(m.x, m.y).x},${gridToGame(m.x, m.y).y})`
-              : `${idx + 1}位・未配置`,
-            placed: m.x !== null && m.y !== null
-          });
-        }
-      });
-      facilities.forEach((f) => {
-        const def = FACILITY_TYPES[f.type] || FACILITY_TYPES.trap;
-        const nm = String(f.name || def.label).trim();
-        if (nm.toLowerCase().includes(q) || def.label.toLowerCase().includes(q)) {
-          matches.push({
-            ent: { ...f, kind: "facility", power: 0 },
-            label: `🏛️ ${nm}`,
-            sub: f.x !== null && f.y !== null
-              ? `${def.label}・(${gridToGame(f.x, f.y).x},${gridToGame(f.x, f.y).y})`
-              : `${def.label}・未配置`,
-            placed: f.x !== null && f.y !== null
-          });
-        }
-      });
-
-      matches.sort((a, b) => Number(b.placed) - Number(a.placed));
-      const top = matches.slice(0, 10);
-      mapSearchResults.innerHTML = "";
-      if (top.length === 0) {
-        const emp = document.createElement("div");
-        emp.className = "map-search-empty";
-        emp.textContent = "一致するメンバー・施設が見つかりません";
-        mapSearchResults.appendChild(emp);
-      } else {
-        top.forEach((item) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "map-search-item";
-          const mainSpan = document.createElement("span");
-          mainSpan.textContent = item.label;
-          const subSpan = document.createElement("span");
-          subSpan.className = "map-search-item-sub";
-          subSpan.textContent = item.sub;
-          btn.append(mainSpan, subSpan);
-          btn.addEventListener("click", () => {
-            selectedTarget = { kind: item.ent.kind, id: item.ent.id };
-            selectedEmptyGridBase = null;
-            isMoveMode = false;
-            facilityTypeSelect.value = item.ent.type;
-            itemNameInput.value = item.ent.name;
-            syncToolbar();
-            updateRowSelectionClasses();
-            mapSearchResults.classList.remove("open");
-            if (item.placed) {
-              focusEntityOnMap(item.ent, { minZoom: 2.0 });
-              RBNSuite.showToast(`📍 ${item.ent.name} へ移動しました`, "info", 1800);
-            } else {
-              render();
-              RBNSuite.showToast(`「${item.ent.name}」はまだマップ未配置です`, "warn", 2200);
-            }
-          });
-          mapSearchResults.appendChild(btn);
-        });
-      }
-      mapSearchResults.classList.add("open");
-    }
-
-    if (mapQuickSearch) {
-      mapQuickSearch.addEventListener("input", renderMapSearchDropdown);
-      mapQuickSearch.addEventListener("focus", renderMapSearchDropdown);
-    }
-    if (mapQuickSearchClear) {
-      mapQuickSearchClear.addEventListener("click", () => {
-        mapQuickSearch.value = "";
-        renderMapSearchDropdown();
-      });
-    }
-
     document.addEventListener("click", (e) => {
-      if (mapSearchResults && !e.target.closest(".map-search-box")) {
-        mapSearchResults.classList.remove("open");
-      }
       if (mapLegendBox && !e.target.closest(".map-legend-wrap")) {
         mapLegendBox.classList.remove("open");
         if (mapLegendToggleBtn) mapLegendToggleBtn.classList.remove("active");
       }
     });
 
-    // 名簿検索＆未配置フィルタ
-    if (rosterSearchInput) {
-      rosterSearchInput.addEventListener("input", () => {
-        rosterSearchQuery = rosterSearchInput.value;
-        renderRoster();
-      });
-    }
+    // 名簿の配置状態フィルタ
     if (rosterFilterGroup) {
       rosterFilterGroup.addEventListener("click", (e) => {
         const btn = e.target.closest("button[data-filter]");
@@ -4463,14 +4351,13 @@
       resortByPower();
     }
 
-    // 全モーダル・検索ドロップダウン・凡例で ESC キー閉じ対応
+    // 全モーダル・凡例で ESC キー閉じ対応
     RBNSuite.enableModalEscapeClose(() => {
       settingsModal.classList.remove("open");
       centerModal.classList.remove("open");
       pinModal.classList.remove("open");
       backupModal.classList.remove("open");
       importModal.classList.remove("open");
-      if (mapSearchResults) mapSearchResults.classList.remove("open");
       if (mapLegendBox) mapLegendBox.classList.remove("open");
       if (mapLegendToggleBtn) mapLegendToggleBtn.classList.remove("active");
     });
