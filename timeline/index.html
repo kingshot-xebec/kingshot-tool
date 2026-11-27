@@ -845,10 +845,9 @@
           URL読込に使うモデル（通知ジェネレーターのモデル設定とも自動連携）
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <select id="setTimelineModel" style="flex:1; min-width:190px;">
-              <option value="gemini-2.5-flash">gemini-2.5-flash（URL直接読込 推奨）</option>
-              <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite（高速・軽量）</option>
-              <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-              <option value="gemini-2.5-pro">gemini-2.5-pro（高精度）</option>
+              <option value="gemini-3.8-flash">gemini-3.8-flash（URL直接読込 推奨）</option>
+              <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite（高速・軽量）</option>
+              <option value="gemini-flash-latest">gemini-flash-latest</option>
             </select>
             <button type="button" id="fetchTimelineModelsBtn" style="white-space:nowrap;">🔍 利用可能モデル取得</button>
           </div>
@@ -1330,8 +1329,8 @@
       function isUsableTextGeminiModel(name) {
         const s = String(name || "").trim();
         if (!s || !/^gemini-/i.test(s)) return false;
-        if (/tts|audio|imagen|veo|embedding|live|aqa|vision-only/i.test(s)) return false;
-        if (s === "gemini-flash-preview") return false;
+        if (/tts|audio|imagen|-image|veo|embedding|live|aqa|robotics|computer-use|exp-image/i.test(s)) return false;
+        if (s === "gemini-flash-preview" || s === "gemini-2.5-flash" || s === "gemini-2.5-flash-lite") return false;
         return true;
       }
 
@@ -1354,7 +1353,7 @@
         let noticeModel = "";
         try { noticeModel = String(localStorage.getItem("ks_gemini_model") || "").trim(); } catch (_) {}
         const preferred = getSelectedTimelineModel();
-        const defaults = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-pro"];
+        const defaults = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
         const merged = [...new Set([preferred, noticeModel, ...stored, ...defaults].filter(isUsableTextGeminiModel))];
         sel.innerHTML = "";
         merged.forEach((m) => {
@@ -1405,14 +1404,14 @@
         try { noticeModel = String(localStorage.getItem("ks_gemini_model") || "").trim(); } catch (_) {}
         const storedList = getAvailableStoredModels();
 
-        // 通知作成で動いているモデル・3.8-flash 等を優先（TTS/非対応モデルを完全除外）
+        // 通知作成で動いているモデル・3.8-flash / 3.5-flash-lite を優先（TTS・画像生成・廃止2.5系を完全除外）
         const candidateModels = [...new Set([
-          noticeModel,
           "gemini-3.8-flash",
+          "gemini-3.5-flash-lite",
+          noticeModel,
           primary,
           ...storedList.slice(0, 5),
-          "gemini-flash-latest",
-          "gemini-2.5-flash"
+          "gemini-flash-latest"
         ].filter(isUsableTextGeminiModel))];
 
         const attemptErrors = [];
