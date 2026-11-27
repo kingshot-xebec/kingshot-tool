@@ -1057,10 +1057,10 @@
 
       function getSelectedTimelineModel() {
         try {
-          return localStorage.getItem(TIMELINE_MODEL_KEY) || "gemini-2.5-flash";
-        } catch (_) {
-          return "gemini-2.5-flash";
-        }
+          const saved = localStorage.getItem(TIMELINE_MODEL_KEY);
+          if (saved && saved !== "gemini-2.5-flash" && saved !== "gemini-flash-preview") return saved;
+        } catch (_) {}
+        return "gemini-3.8-flash";
       }
 
       function updateApiStatusUI() {
@@ -1327,13 +1327,21 @@
         ].join("\n");
       }
 
+      function isUsableTextGeminiModel(name) {
+        const s = String(name || "").trim();
+        if (!s || !/^gemini-/i.test(s)) return false;
+        if (/tts|audio|imagen|veo|embedding|live|aqa|vision-only/i.test(s)) return false;
+        if (s === "gemini-flash-preview") return false;
+        return true;
+      }
+
       function getAvailableStoredModels() {
         let list = [];
         try {
           const raw = localStorage.getItem("ks_available_models");
           if (raw) {
             const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) list = parsed.filter((m) => typeof m === "string" && m.trim());
+            if (Array.isArray(parsed)) list = parsed.filter(isUsableTextGeminiModel);
           }
         } catch (_) {}
         return list;
@@ -1346,8 +1354,8 @@
         let noticeModel = "";
         try { noticeModel = String(localStorage.getItem("ks_gemini_model") || "").trim(); } catch (_) {}
         const preferred = getSelectedTimelineModel();
-        const defaults = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.5-pro"];
-        const merged = [...new Set([preferred, noticeModel, ...stored, ...defaults].filter(Boolean))];
+        const defaults = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-pro"];
+        const merged = [...new Set([preferred, noticeModel, ...stored, ...defaults].filter(isUsableTextGeminiModel))];
         sel.innerHTML = "";
         merged.forEach((m) => {
           const opt = document.createElement("option");
@@ -1370,16 +1378,17 @@
         const models = (data.models || [])
           .filter((m) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
           .map((m) => String(m.name || "").replace(/^models\//, ""))
-          .filter((name) => /^gemini-/i.test(name) && !/embedding|imagen|veo|tts|audio|live|aqa/i.test(name));
+          .filter(isUsableTextGeminiModel);
 
-        // 2.5-flash / 2.5-pro / 2.0-flash 系を優先順に並べる
+        // 最新世代（3.x flash → flash-latest → 2.5 flash → pro）を優先順に並べる
         const rankModel = (name) => {
-          if (name === "gemini-2.5-flash") return 1;
-          if (/^gemini-2\.5-flash/.test(name)) return 2;
-          if (/^gemini-2\.5-pro/.test(name)) return 3;
-          if (/^gemini-3/.test(name) && /flash/i.test(name)) return 4;
-          if (name === "gemini-2.0-flash") return 5;
-          if (/flash/i.test(name)) return 6;
+          if (/^gemini-3\.\d+-flash$/i.test(name)) return 1;
+          if (/^gemini-3.*flash/i.test(name) && !/lite/i.test(name)) return 2;
+          if (name === "gemini-flash-latest") return 3;
+          if (/^gemini-3.*flash.*lite/i.test(name)) return 4;
+          if (/^gemini-3.*pro/i.test(name)) return 5;
+          if (name === "gemini-2.5-flash") return 6;
+          if (/flash/i.test(name)) return 7;
           return 10;
         };
         const sorted = [...new Set(models)].sort((a, b) => rankModel(a) - rankModel(b) || a.localeCompare(b));
@@ -1396,26 +1405,25 @@
         try { noticeModel = String(localStorage.getItem("ks_gemini_model") || "").trim(); } catch (_) {}
         const storedList = getAvailableStoredModels();
 
-        // 候補モデルリストを構築（存在しない古い preview 名は含めない）
-        let candidateModels = [...new Set([
-          primary,
-          "gemini-2.5-flash",
+        // 通知作成で動いているモデル・3.8-flash 等を優先（TTS/非対応モデルを完全除外）
+        const candidateModels = [...new Set([
           noticeModel,
-          ...storedList.filter((m) => /flash|pro/i.test(m)).slice(0, 4),
-          "gemini-2.5-flash-lite",
-          "gemini-2.0-flash",
-          "gemini-flash-latest"
-        ].filter((m) => m && m !== "gemini-flash-preview"))];
+          "gemini-3.8-flash",
+          primary,
+          ...storedList.slice(0, 5),
+          "gemini-flash-latest",
+          "gemini-2.5-flash"
+        ].filter(isUsableTextGeminiModel))];
 
         const attemptErrors = [];
         let triedDiscovery = false;
 
         const tryModelList = async (models) => {
+          // 無料枠で google_search のクォータが0のケースが多いため、まず url_context 単体を最優先！
           const toolPlans = useUrlTools
             ? [
-                { label: "URL直接読込+検索", tools: [{ url_context: {} }, { google_search: {} }] },
-                { label: "Google検索連携", tools: [{ google_search: {} }] },
-                { label: "URL直接読込", tools: [{ url_context: {} }] }
+                { label: "URL直接読込", tools: [{ url_context: {} }] },
+                { label: "Google検索連携", tools: [{ google_search: {} }] }
               ]
             : [{ label: "テキスト解析", tools: null }];
 
@@ -1444,8 +1452,8 @@
                 if (!res.ok) {
                   const errMsg = data?.error?.message || `HTTP ${res.status}`;
                   attemptErrors.push(`[${modelName}/${plan.label}] ${errMsg}`);
-                  // モデル未存在(404)や利用不可・クォータ切れなら別ツールではなく次モデルへ
-                  if (res.status === 404 || res.status === 429 || /not found|not supported for generateContent|quota|rate limit/i.test(errMsg)) {
+                  // モデル自体が廃止・未存在(404)なら即次モデルへ。クォータ/ツール不可は別ツールも試す
+                  if (res.status === 404 || /not found|no longer available|not supported for generateContent/i.test(errMsg)) {
                     break;
                   }
                   continue;
@@ -1458,7 +1466,6 @@
                   continue;
                 }
                 const parsed = extractJsonFromModelText(rawText);
-                // 成功したモデルを記憶して次回から即1発成功させる
                 try { localStorage.setItem(TIMELINE_MODEL_KEY, modelName); } catch (_) {}
                 return { parsed, modelUsed: `${modelName} / ${plan.label}` };
               } catch (err) {
@@ -1472,7 +1479,6 @@
         let result = await tryModelList(candidateModels);
         if (result) return result;
 
-        // 全候補失敗時は APIキーで実際に使えるモデル一覧を自動取得して再挑戦
         if (!triedDiscovery) {
           triedDiscovery = true;
           try {
@@ -1489,6 +1495,101 @@
         }
 
         throw new Error(attemptErrors.slice(0, 3).join(" ／ ") || "取得に失敗しました");
+      }
+
+      // ==================== ローカル内蔵パーサー＆日本語辞書（API無料枠超過時の自動フォールバック） ====================
+      function translateEnMilestoneLocal(rawLine) {
+        const dict = [
+          [/Generation\s*1\s*Heroes?/i, "第1世代英雄（S1）", "hero", "アマデウス・ヘルガ・ジェベル・サロ等の初期英雄"],
+          [/Generation\s*2\s*Heroes?/i, "第2世代英雄（S2）：ゾーイ・ヒルデ・マリン", "hero", "ラッキールーレット等で登場。ダイヤを温存して星4以上を狙う"],
+          [/Generation\s*3\s*Heroes?/i, "第3世代英雄（S3）：エリック・ペーラ・イェーガー", "hero", "巨熊最強格ペーラ＆イェーガーが登場"],
+          [/Generation\s*4\s*Heroes?/i, "第4世代英雄（S4）：アルカ・マーゴ・ローザ", "hero", "マーゴ（攻撃+25%）・ローザ・アルカが登場"],
+          [/Generation\s*5\s*Heroes?/i, "第5世代英雄（S5）：龍飛・スルード・ビビアン", "hero", "巨熊Sランクのビビアン・スルード・龍飛が登場"],
+          [/Generation\s*6\s*Heroes?/i, "第6世代英雄（S6）：トリトン・ソフィア・ヤン", "hero", "弓集結主強化のヤン・トリトン・ソフィアが登場"],
+          [/Generation\s*7\s*Heroes?/i, "第7世代英雄（S7）：チャールズ・アイヴァ・レン&ロン", "hero", "アイヴァ・レン&ロンの超強力世代"],
+          [/Generation\s*8\s*Heroes?/i, "第8世代英雄（S8）：ディエゴ・リズ・ルナ", "hero", "ルナ・リズ・ディエゴの最前線世代"],
+          [/Generation\s*9\s*Heroes?/i, "第9世代英雄（S9）", "hero", "新世代英雄の解禁"],
+          [/Generation\s*1\s*Pets?/i, "第1世代ペット解禁（灰色オオカミ・オオヤマネコ・バイソン）", "pet", "ペット育成システム開放"],
+          [/Generation\s*2\s*Pets?/i, "第2世代ペット解禁（チーター・ヘラジカ）", "pet", "第2世代ペット追加"],
+          [/Generation\s*3\s*Pets?/i, "第3世代ペット解禁（ライオン・ハイイログマ）", "pet", "第3世代ペット追加"],
+          [/Generation\s*4\s*Pets?/i, "第4世代ペット解禁（ジャイアントライノ・マイティバイソン）", "pet", "第4世代ペット追加"],
+          [/Generation\s*5\s*Pets?/i, "第5世代ペット解禁（グレートムース・アルファ黒豹）", "pet", "第5世代ペット追加"],
+          [/Generation\s*6\s*Pets?/i, "第6世代ペット解禁（装甲戦象・白ライオン）", "pet", "第6世代ペット追加"],
+          [/Generation\s*7\s*Pets?/i, "第7世代ペット解禁（装甲戦熊 ほか）", "pet", "第7世代ペット追加"],
+          [/Truegold\s*(?:Age|1|TG\s*1)/i, "黄金時代（Truegold TG1〜TG3）開幕", "building", "黄金（TG）強化が解禁"],
+          [/Truegold\s*(?:4|5|Crucible)|TG\s*[45]/i, "黄金 TG4〜TG5 ＆ 黄金るつぼ解禁", "building", "TG4〜5・精錬・王国移民対象帯へ"],
+          [/Truegold\s*(?:6|7|8)|TG\s*[678]|Tempered/i, "黄金 TG6〜TG8 ＆ 精錬黄金解禁", "building", "上級黄金・超精錬システム開放"],
+          [/War\s*Academy|T11/i, "戦争学院（War Academy）＆ T11兵士解禁", "building", "黄金の粉塵でT11兵士と出撃枠を研究"],
+          [/Plains\s*Fog/i, "平原エリアの霧解除", "event", "平原への進出・領地拡大が可能に"],
+          [/Fertile\s*Land/i, "肥沃な大地の霧解除", "event", "王城周辺の肥沃な大地が開放"],
+          [/Castle\s*Battle|Sunfire/i, "王城決戦（サンファイア城争奪）", "event", "国王選出＆国王バフ解禁"],
+          [/Sanctuary/i, "聖域戦 解禁", "event", "同盟対抗の聖域争奪戦"],
+          [/Fortress/i, "要塞戦 解禁", "event", "同盟対抗の要塞争奪戦"],
+          [/Hall\s*of\s*Governors/i, "最強領主（総督の殿堂）", "event", "大型ポイント競争イベント"],
+          [/Kingdom\s*of\s*Power|KvK/i, "最強王国（KvK）解禁", "event", "他サーバーとの全面対抗戦"],
+          [/Transfer/i, "王国移民 解禁", "event", "他サーバーへの移民・受入が可能に"],
+          [/Fishing/i, "釣りコンテンツ 解禁", "event", "定期ミニイベント開放"],
+          [/Reforge|Hero\s*Gear/i, "英雄装備 再鍛造 解禁", "event", "英雄装備の強化・再鍛造が開放"],
+          [/Mystic\s*Trial/i, "神秘の試練 解禁", "event", "挑戦コンテンツ開放"],
+          [/Resource\s*Exchange/i, "同盟資源交換 解禁", "event", "同盟メンバー間で資源交換が可能に"]
+        ];
+        for (const [re, ja, cat, desc] of dict) {
+          if (re.test(rawLine)) return { titleJa: ja, cat, desc };
+        }
+        return null;
+      }
+
+      function parsePastedTextLocally(rawText, serverId) {
+        const lines = String(rawText || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        let openedDate = currentData?.openedDate || estimateOpenedDateForServer(serverId);
+        // 開設日検出（MM/DD/YYYY or YYYY-MM-DD or YYYY/MM/DD）
+        for (const l of lines) {
+          if (/open|launch|start|開設/i.test(l)) {
+            const mIso = l.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+            const mUs = l.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (mIso) {
+              openedDate = `${mIso[1]}-${String(mIso[2]).padStart(2, "0")}-${String(mIso[3]).padStart(2, "0")}`;
+              break;
+            } else if (mUs) {
+              openedDate = `${mUs[3]}-${String(mUs[1]).padStart(2, "0")}-${String(mUs[2]).padStart(2, "0")}`;
+              break;
+            }
+          }
+        }
+
+        const milestones = [];
+        const seenTitles = new Set();
+        for (let i = 0; i < lines.length; i++) {
+          const chunk = [lines[i], lines[i + 1] || "", lines[i + 2] || ""].join(" ");
+          const hit = translateEnMilestoneLocal(lines[i]);
+          if (!hit || seenTitles.has(hit.titleJa)) continue;
+
+          let dayNum = null;
+          let fixedDate = "";
+          const dayM = chunk.match(/\bDay\s*(\d{1,4})\b/i);
+          if (dayM) dayNum = Number(dayM[1]);
+          const isoM = chunk.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+          const usM = chunk.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+          if (isoM) {
+            fixedDate = `${isoM[1]}-${String(isoM[2]).padStart(2, "0")}-${String(isoM[3]).padStart(2, "0")}`;
+          } else if (usM) {
+            fixedDate = `${usM[3]}-${String(usM[1]).padStart(2, "0")}-${String(usM[2]).padStart(2, "0")}`;
+          }
+          if (dayNum === null && !fixedDate) continue;
+
+          seenTitles.add(hit.titleJa);
+          milestones.push({
+            day: dayNum !== null ? dayNum : diffDaysYmd(openedDate, fixedDate),
+            fixedDate,
+            cat: hit.cat,
+            titleJa: hit.titleJa,
+            titleEn: lines[i].slice(0, 60),
+            desc: hit.desc,
+            prep: ""
+          });
+        }
+
+        return { serverId: String(serverId), openedDate, milestones };
       }
 
       function normalizeParsedTimeline(parsed, serverId, sourceLabel) {
@@ -1574,10 +1675,6 @@
         const apiKey = getEffectiveApiKey();
         const raw = pasteRawTextarea.value.trim();
         pasteErrMsg.textContent = "";
-        if (!apiKey) {
-          pasteErrMsg.textContent = "AI Studio APIキーが未設定です。右上の「⚙️ 設定」から登録してください。";
-          return;
-        }
         if (raw.length < 20) {
           pasteErrMsg.textContent = "元サイトのテキストを貼り付けてください。";
           return;
@@ -1586,14 +1683,40 @@
         runPasteParseBtn.disabled = true;
         runPasteParseBtn.textContent = "🤖 解析＆翻訳中...";
         try {
-          const prompt = buildTranslationPromptForPastedText(currentServerId, raw);
-          const { parsed, modelUsed } = await callGeminiTimeline(apiKey, prompt, false);
-          currentData = normalizeParsedTimeline(parsed, currentServerId, `📋 テキスト貼付AI翻訳（${modelUsed}）`);
-          saveCurrentToLocal();
-          renderTimeline();
-          pasteImportModal.classList.remove("open");
-          showFetchStatus(`✅ 貼り付けテキストから #${currentServerId} のタイムライン（${currentData.milestones.length}件）を日本語化しました！`, "ok");
-          RBNSuite.showToast(`✅ ${currentData.milestones.length}件の予定を日本語化しました！`, "ok");
+          if (apiKey) {
+            try {
+              const prompt = buildTranslationPromptForPastedText(currentServerId, raw);
+              const { parsed, modelUsed } = await callGeminiTimeline(apiKey, prompt, false);
+              currentData = normalizeParsedTimeline(parsed, currentServerId, `📋 テキスト貼付AI翻訳（${modelUsed}）`);
+              saveCurrentToLocal();
+              renderTimeline();
+              pasteImportModal.classList.remove("open");
+              showFetchStatus(`✅ 貼り付けテキストから #${currentServerId} のタイムライン（${currentData.milestones.length}件）を日本語化しました！`, "ok");
+              RBNSuite.showToast(`✅ ${currentData.milestones.length}件の予定を日本語化しました！`, "ok");
+              return;
+            } catch (aiErr) {
+              // AI無料枠超過時はローカル内蔵辞書パーサーへ自動フォールバック！
+              const localParsed = parsePastedTextLocally(raw, currentServerId);
+              if (localParsed.milestones.length >= 3) {
+                currentData = normalizeParsedTimeline(localParsed, currentServerId, "📋 テキスト貼付（内蔵辞書・API不要変換）");
+                saveCurrentToLocal();
+                renderTimeline();
+                pasteImportModal.classList.remove("open");
+                showFetchStatus(`✅ AI制限中のため内蔵日本語辞書で #${currentServerId} の予定（${currentData.milestones.length}件）を取り込みました！`, "ok");
+                RBNSuite.showToast(`✅ 内蔵辞書で${currentData.milestones.length}件を取り込みました！`, "ok");
+                return;
+              }
+              throw aiErr;
+            }
+          } else {
+            const localParsed = parsePastedTextLocally(raw, currentServerId);
+            currentData = normalizeParsedTimeline(localParsed, currentServerId, "📋 テキスト貼付（内蔵辞書・API不要変換）");
+            saveCurrentToLocal();
+            renderTimeline();
+            pasteImportModal.classList.remove("open");
+            showFetchStatus(`✅ 内蔵日本語辞書で #${currentServerId} の予定（${currentData.milestones.length}件）を取り込みました！`, "ok");
+            RBNSuite.showToast(`✅ 内蔵辞書で${currentData.milestones.length}件を取り込みました！`, "ok");
+          }
         } catch (err) {
           pasteErrMsg.textContent = `エラー：${err?.message || err}`;
         } finally {
