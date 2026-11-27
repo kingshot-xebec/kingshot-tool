@@ -3,7 +3,7 @@
  * - 外部通信（Firebase Realtime Database・Firebase SDK・Gemini API等）は一切キャッシュせず素通りします。
  * - HTML/CSS/JS は常にサーバーから最新（cache: "no-store"）を優先取得し、オフライン時のみキャッシュを返します。
  */
-const CACHE_NAME = "ks-tool-pwa-v3";
+const CACHE_NAME = "ks-tool-pwa-v4";
 const PRECACHE_URLS = [
   "./",
   "./index.html",
@@ -18,7 +18,9 @@ const PRECACHE_URLS = [
   "./bear/",
   "./bear/manifest.webmanifest",
   "./notice/",
-  "./notice/manifest.webmanifest"
+  "./notice/manifest.webmanifest",
+  "./timeline/",
+  "./timeline/manifest.webmanifest"
 ];
 
 self.addEventListener("install", (event) => {

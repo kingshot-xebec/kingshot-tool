@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>📅 RBN サーバー進行タイムライン（キングショット）</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ks timeline" />
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png" />
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="../assets/firebase-init.js?v=20261127a"></script>
+  <link rel="stylesheet" href="../assets/common.css?v=20261127a" />
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-deep: #0b1120;
+      --card: #1e293b;
+      --card-sub: #263349;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --blue: #38bdf8;
+      --green: #10b981;
+      --purple: #a855f7;
+      --red: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--rbn-font-sans);
+      background: radial-gradient(circle at top right, rgba(168, 85, 247, 0.08), transparent 42%),
+        radial-gradient(circle at bottom left, rgba(56, 189, 248, 0.08), transparent 45%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+      padding: 14px 12px 42px;
+    }
+
+    .app-shell {
+      max-width: 1020px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    header.tl-header {
+      background: linear-gradient(135deg, var(--card) 0%, var(--bg-deep) 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px rgba(2, 6, 23, 0.42);
+    }
+
+    .tl-title {
+      font-size: 1.18rem;
+      font-weight: 800;
+      color: #e9d5ff;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .tl-header-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    button, input, select, textarea {
+      font-family: inherit;
+    }
+
+    button {
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card-sub);
+      color: var(--text);
+      padding: 7px 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    button:hover:not(:disabled) {
+      border-color: var(--blue);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      border-color: #38bdf8;
+      color: #fff;
+    }
+
+    .btn-accent {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      border-color: #fbbf24;
+      color: #0b1120;
+    }
+
+    .btn-green {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      border-color: #34d399;
+      color: #fff;
+    }
+
+    .btn-purple {
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+      border-color: #c084fc;
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: rgba(127, 29, 29, 0.85);
+      border-color: rgba(248, 113, 113, 0.7);
+      color: #fecaca;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="password"],
+    select,
+    textarea {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 0.84rem;
+      color-scheme: dark;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
+
+    .sync-badge {
+      font-size: 0.74rem;
+      padding: 4px 10px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #6ee7b7;
+    }
+    .sync-badge.offline {
+      background: rgba(148, 163, 184, 0.14);
+      border-color: rgba(148, 163, 184, 0.4);
+      color: #cbd5e1;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 15px 16px;
+      box-shadow: 0 6px 20px rgba(2, 6, 23, 0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card-title {
+      font-size: 0.94rem;
+      font-weight: 800;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .server-bar {
+      display: grid;
+      grid-template-columns: minmax(170px, 1fr) minmax(155px, 1fr) minmax(130px, 0.8fr) auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .server-input-row {
+      display: flex;
+      gap: 6px;
+    }
+    .server-input-row input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .action-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 8px;
+      border-top: 1px solid rgba(51, 65, 85, 0.75);
+    }
+
+    .action-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .ext-link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid var(--border);
+      color: #cbd5e1;
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .ext-link-btn:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .fetch-status {
+      display: none;
+      padding: 9px 12px;
+      border-radius: 9px;
+      font-size: 0.8rem;
+      line-height: 1.45;
+      background: rgba(14, 165, 233, 0.13);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      color: #e0f2fe;
+    }
+    .fetch-status.show { display: block; }
+    .fetch-status.err {
+      background: rgba(127, 29, 29, 0.25);
+      border-color: rgba(248, 113, 113, 0.6);
+      color: #fecaca;
+    }
+    .fetch-status.ok {
+      background: rgba(16, 185, 129, 0.14);
+      border-color: rgba(16, 185, 129, 0.5);
+      color: #a7f3d0;
+    }
+
+    /* ハイライト（現在状況＆次の重要解禁） */
+    .hero-highlight {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.18) 0%, rgba(14, 165, 233, 0.14) 100%);
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      border-radius: 14px;
+      padding: 15px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .hero-stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .kingdom-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1rem;
+      font-weight: 800;
+      color: #fef08a;
+    }
+
+    .day-pill {
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.55);
+      color: #fde68a;
+      font-size: 0.84rem;
+      font-weight: 800;
+    }
+
+    .source-tag {
+      font-size: 0.72rem;
+      color: #cbd5e1;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 10px;
+    }
+
+    .next-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .next-card {
+      background: rgba(15, 23, 42, 0.84);
+      border: 1px solid rgba(56, 189, 248, 0.42);
+      border-radius: 11px;
+      padding: 11px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .next-card.primary-next {
+      border-color: rgba(245, 158, 11, 0.72);
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25);
+    }
+
+    .next-countdown {
+      font-size: 0.76rem;
+      font-weight: 800;
+      color: #fcd34d;
+    }
+
+    .next-title {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+
+    .next-date {
+      font-size: 0.74rem;
+      color: #93c5fd;
+    }
+
+    .next-prep {
+      font-size: 0.73rem;
+      color: #cbd5e1;
+      margin-top: 2px;
+      line-height: 1.4;
+    }
+
+    /* フィルタバー */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .pill-group {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px;
+    }
+
+    .pill-btn {
+      background: transparent;
+      border: none;
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .pill-btn.active {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    /* タイムライン一覧 */
+    .timeline-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tl-item {
+      display: grid;
+      grid-template-columns: 116px 1fr auto;
+      gap: 12px;
+      align-items: start;
+      background: rgba(15, 23, 42, 0.74);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--blue);
+      border-radius: 11px;
+      padding: 11px 12px;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .tl-item.cat-hero { border-left-color: #f59e0b; }
+    .tl-item.cat-pet { border-left-color: #10b981; }
+    .tl-item.cat-building { border-left-color: #a855f7; }
+    .tl-item.cat-event { border-left-color: #38bdf8; }
+
+    .tl-item.is-past {
+      opacity: 0.56;
+    }
+    .tl-item.is-soon {
+      background: rgba(245, 158, 11, 0.08);
+      border-color: rgba(245, 158, 11, 0.45);
+    }
+
+    .tl-date-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .tl-countdown-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: fit-content;
+    }
+    .tl-countdown-badge.future {
+      background: rgba(14, 165, 233, 0.18);
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      color: #bae6fd;
+    }
+    .tl-countdown-badge.soon {
+      background: rgba(245, 158, 11, 0.24);
+      border: 1px solid rgba(251, 191, 36, 0.75);
+      color: #fef08a;
+    }
+    .tl-countdown-badge.past {
+      background: rgba(71, 85, 105, 0.4);
+      border: 1px solid rgba(100, 116, 139, 0.5);
+      color: #cbd5e1;
+    }
+
+    .tl-date-text {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+    .tl-day-text {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .tl-body {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .tl-title-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cat-tag {
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .cat-tag.hero { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+    .cat-tag.pet { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+    .cat-tag.building { background: rgba(168, 85, 247, 0.22); color: #d8b4fe; }
+    .cat-tag.event { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; }
+
+    .tl-item-title {
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+
+    .tl-item-en {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .tl-item-desc {
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      line-height: 1.45;
+    }
+
+    .tl-item-prep {
+      font-size: 0.75rem;
+      color: #fde68a;
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 7px;
+      padding: 4px 8px;
+      margin-top: 2px;
+    }
+
+    .tl-edit-btn {
+      padding: 4px 8px;
+      font-size: 0.74rem;
+      background: rgba(30, 41, 59, 0.9);
+    }
+
+    /* 幹部配信バー */
+    .admin-bar {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.78rem;
+    }
+
+    /* モーダル */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.78);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      padding: 12px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      width: 680px;
+      max-width: 100%;
+      max-height: 88vh;
+      overflow-y: auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 14px 36px rgba(2, 6, 23, 0.65);
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .modal-head h3 {
+      font-size: 1rem;
+      color: var(--accent);
+    }
+    .settings-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .settings-box-title {
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: var(--blue);
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 780px) {
+      .server-bar {
+        grid-template-columns: 1fr 1fr;
+      }
+      .next-grid {
+        grid-template-columns: 1fr;
+      }
+      .tl-item {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .tl-date-col {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="tl-header">
+      <div>
+        <div class="rbn-header-title-row">
+          <nav class="rbn-quick-nav" aria-label="ツール切替">
+            <a class="rbn-top-link" href="../" title="トップメニューへ戻る">🏠 トップ</a>
+            <a id="headerMapLink" class="rbn-top-link" href="../map/" title="RBN 都市マップを開く">🗺️ マップ</a>
+            <a id="headerBearLink" class="rbn-top-link" href="../bear/" title="RBN 熊編成ナビを開く">🐻 熊編成</a>
+            <a id="headerNoticeLink" class="rbn-top-link" href="../notice/" title="RBN 同盟通知ジェネレーターを開く">📢 通知作成</a>
+          </nav>
+          <h1 class="tl-title">📅 RBN サーバー進行タイムライン</h1>
+        </div>
+        <div style="font-size:0.75rem; color:var(--muted); margin-top:3px;">
+          kingshot.net の王国スケジュールをワンクリック取得＆日本語翻訳（英雄・ペット・黄金時代・施設解禁）
+        </div>
+      </div>
+      <div class="tl-header-actions">
+        <span id="syncBadge" class="sync-badge offline">⚪ ローカル読込</span>
+        <button type="button" id="reloadPageBtn" title="最新状態へ再読み込み">🔄 再読込</button>
+        <button type="button" id="openSettingsBtn" class="btn-primary">⚙️ 設定</button>
+      </div>
+    </header>
+
+    <!-- サーバー選択 ＆ ワンクリック最新情報取得 -->
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title">🌐 サーバー選択 ＆ ワンクリック最新取得</div>
+        <span id="apiKeyMiniStatus" style="font-size:0.74rem; color:var(--muted);">APIキー確認中...</span>
+      </div>
+
+      <div class="server-bar">
+        <label class="field">
+          サーバー番号（王国番号）
+          <div class="server-input-row">
+            <input type="number" id="serverIdInput" min="1" max="99999" value="2011" placeholder="2011" />
+            <button type="button" id="switchServerBtn">切替</button>
+          </div>
+        </label>
+        <label class="field">
+          サーバー開設日（Day 0）
+          <input type="date" id="openedDateInput" value="2026-05-01" />
+        </label>
+        <label class="field">
+          現在の経過日数（Day）
+          <input type="number" id="serverDayInput" min="0" max="2000" value="210" />
+        </label>
+        <button type="button" id="preset2011Btn" title="RBNの2011サーバーへ戻す">#2011 に戻す</button>
+      </div>
+
+      <div class="action-strip">
+        <div class="action-group">
+          <button type="button" id="fetchUrlBtn" class="btn-accent">🔄 kingshot.net から最新情報を取得＆日本語化</button>
+          <button type="button" id="openPasteModalBtn" class="btn-purple">📋 テキスト貼付でAI翻訳</button>
+        </div>
+        <div class="action-group">
+          <a id="origSiteLink" class="ext-link-btn" href="https://kingshot.net/kingdom-timeline/2011" target="_blank" rel="noopener noreferrer">🌐 元サイト ↗</a>
+          <a id="gtransSiteLink" class="ext-link-btn" href="https://kingshot-net.translate.goog/kingdom-timeline/2011?_x_tr_sl=en&_x_tr_tl=ja" target="_blank" rel="noopener noreferrer">🈺 Google翻訳版 ↗</a>
+        </div>
+      </div>
+
+      <div id="fetchStatusBox" class="fetch-status"></div>
+    </section>
+
+    <!-- ハイライト：現在Day ＆ 次の重要解禁 -->
+    <section id="nextHeroBanner" class="hero-highlight" aria-live="polite">
+      <div class="hero-stats-row">
+        <div class="kingdom-pill">
+          <span id="heroKingdomLabel">🏰 #2011 サーバー</span>
+          <span id="heroDayPill" class="day-pill">Day 0</span>
+        </div>
+        <span id="heroSourceTag" class="source-tag">📋 標準タイムライン</span>
+      </div>
+      <div style="font-size:0.78rem; color:#e2e8f0; font-weight:700;">🔥 これから直近で解禁される重要スケジュール</div>
+      <div id="nextCardsGrid" class="next-grid"></div>
+    </section>
+
+    <!-- タイムライン本体 -->
+    <section class="card">
+      <div class="filter-bar">
+        <div id="catFilterGroup" class="pill-group" role="group" aria-label="カテゴリ絞り込み">
+          <button type="button" class="pill-btn active" data-cat="all">すべて</button>
+          <button type="button" class="pill-btn" data-cat="hero">⚔️ 英雄</button>
+          <button type="button" class="pill-btn" data-cat="pet">🐾 ペット</button>
+          <button type="button" class="pill-btn" data-cat="building">🏗️ 黄金・施設</button>
+          <button type="button" class="pill-btn" data-cat="event">🚩 イベント</button>
+        </div>
+        <div id="scopeFilterGroup" class="pill-group" role="group" aria-label="表示範囲">
+          <button type="button" class="pill-btn active" data-scope="upcoming">📅 今後の予定のみ</button>
+          <button type="button" class="pill-btn" data-scope="all">📜 過去も含む</button>
+        </div>
+      </div>
+
+      <div id="timelineList" class="timeline-list"></div>
+
+      <!-- 幹部向け：予定の微調整＆Firebase全員共有 -->
+      <div class="admin-bar">
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button type="button" id="addMilestoneBtn">＋ 予定を手動追加</button>
+          <button type="button" id="resetBaselineBtn">🔄 標準スケジュールへ戻す</button>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <input type="password" id="adminPassInput" placeholder="幹部パスコード" style="width:145px;" />
+          <button type="button" id="publishCloudBtn" class="btn-green">☁️ 同盟全員へ配信</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- テキスト貼付 AI翻訳モーダル（フォールバック用） -->
+  <div id="pasteImportModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>📋 元サイトのテキスト貼付からAI日本語化</h3>
+        <button type="button" id="closePasteModalBtn">閉じる</button>
+      </div>
+      <div style="font-size:0.78rem; color:#cbd5e1; line-height:1.5;">
+        ワンクリック取得が混雑・ブロックされた場合でも、<code>kingshot.net/kingdom-timeline/〇〇</code> の画面テキストをそのまま全選択コピー（Ctrl+A → Ctrl+C）して下に貼り付ければ、Gemini AI が日本語のタイムラインへ整理します。
+      </div>
+      <textarea id="pasteRawTextarea" rows="8" placeholder="kingshot.net のページ内容をここに貼り付け..."></textarea>
+      <div id="pasteErrMsg" style="font-size:0.78rem; color:#fca5a5;"></div>
+      <div class="modal-footer">
+        <button type="button" id="cancelPasteBtn">キャンセル</button>
+        <button type="button" id="runPasteParseBtn" class="btn-purple">🤖 AIで日本語タイムラインへ変換</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 個別マイルストーン編集モーダル -->
+  <div id="editMilestoneModal" class="modal-backdrop">
+    <div class="modal-box" style="width:520px;">
+      <div class="modal-head">
+        <h3 id="editModalTitle">✏️ 予定の編集・日付微調整</h3>
+        <button type="button" id="closeEditModalBtn">閉じる</button>
+      </div>
+      <input type="hidden" id="editItemId" />
+      <div class="grid-2">
+        <label class="field">
+          カテゴリ
+          <select id="editCat">
+            <option value="hero">⚔️ 英雄</option>
+            <option value="pet">🐾 ペット</option>
+            <option value="building">🏗️ 黄金・施設</option>
+            <option value="event">🚩 イベント</option>
+          </select>
+        </label>
+        <label class="field">
+          解禁 Day（開設日からの日数）
+          <input type="number" id="editDay" min="0" max="2000" />
+        </label>
+      </div>
+      <label class="field">
+        固定日付（任意：運営調整で日付が確定している場合のみ入力）
+        <input type="date" id="editFixedDate" />
+      </label>
+      <label class="field">
+        タイトル（日本語）
+        <input type="text" id="editTitleJa" placeholder="例：第5世代英雄（龍飛・スルード・ビビアン）" />
+      </label>
+      <label class="field">
+        英語原文・補足ラベル（任意）
+        <input type="text" id="editTitleEn" placeholder="例：Generation 5 Heroes" />
+      </label>
+      <label class="field">
+        内容説明
+        <textarea id="editDesc" rows="2" placeholder="解禁されるコンテンツの概要"></textarea>
+      </label>
+      <label class="field">
+        💡 準備アドバイス（任意）
+        <input type="text" id="editPrep" placeholder="例：ダイヤ・汎用欠片・黄金を事前温存" />
+      </label>
+      <div class="modal-footer" style="justify-content:space-between;">
+        <button type="button" id="deleteMilestoneBtn" class="btn-danger">🗑 削除</button>
+        <div style="display:flex; gap:8px;">
+          <button type="button" id="cancelEditBtn">キャンセル</button>
+          <button type="button" id="saveMilestoneBtn" class="btn-primary">💾 保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 共通設定モーダル -->
+  <div id="settingsModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>⚙️ 共通設定・APIキー・遊び心演出</h3>
+        <button type="button" id="closeSettingsBtn">閉じる</button>
+      </div>
+
+      <div class="settings-box">
+        <div class="settings-box-title">☁️ Firebase / AI Studio API 共通設定</div>
+        <label class="field">
+          Firebase Realtime Database URL
+          <input type="text" id="setFirebaseUrl" placeholder="https://...firebaseio.com" />
+        </label>
+        <label class="field">
+          AI Studio API キー（ワンクリック最新取得・日本語翻訳に使用／全ツール共通）
+          <input type="password" id="setAiApiKey" placeholder="AIzaSy..." />
+        </label>
+        <label class="field">
+          URL読込に使うモデル（推奨：gemini-2.5-flash）
+          <select id="setTimelineModel">
+            <option value="gemini-2.5-flash">gemini-2.5-flash（URL直接読込 推奨）</option>
+            <option value="gemini-flash-preview">gemini-flash-preview</option>
+            <option value="gemini-2.5-pro">gemini-2.5-pro（高精度）</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="settings-box">
+        <div class="settings-box-title">🎭 メンバーアイコン遊び心演出（個別ON/OFF・全ツール共通）</div>
+        <div id="timelinePlayfulSettingsMount"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="cancelSettingsBtn">閉じる</button>
+        <button type="button" id="saveSettingsBtn" class="btn-primary">💾 設定を保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const ADMIN_PASSCODE = "rbn2011";
+      const LOCAL_STORE_KEY = "rbn_kingdom_timeline_store_v1";
+      const LAST_SERVER_KEY = "rbn_kingdom_timeline_last_server_v1";
+      const TIMELINE_MODEL_KEY = "rbn_timeline_gemini_model_v1";
+      const DB_ROOT = (window.RBNSuite && RBNSuite.DB_PATHS && RBNSuite.DB_PATHS.kingdomTimeline) || "kingdom_timelines";
+
+      // 既知サーバーの初期開設日（#2011 = 2026-05-01）
+      const KNOWN_SERVER_OPEN_DATES = {
+        "2011": "2026-05-01"
+      };
+
+      // アルテマ準拠・キングショット標準マイルストーン（Day 0〜540+）
+      const DEFAULT_MILESTONES = [
+        { id: "m_d0_gen1", day: 0, cat: "hero", titleJa: "サーバー開設 ＆ 第1世代英雄（S1）", titleEn: "Server Launch & Gen 1 Heroes", desc: "アマデウス・ヘルガ・ジェベル・サロ等の初期英雄が登場。まずは都市レベルと研究を最速で進める時期。", prep: "VIPログインとデイリー任務を毎日消化し、初期ダイヤを貯めておく。" },
+        { id: "m_d7_hog", day: 7, cat: "event", titleJa: "初「最強領主 / 総督の殿堂」＆ 聖域・要塞戦の幕開け", titleEn: "First Hall of Governors / Sanctuary & Fortress", desc: "サーバー初の大型ポイント競争イベントと、同盟で競う聖域・要塞戦が開幕します。", prep: "建設・研究の加速アイテムはイベント対象日まで温存すると報酬が伸びます。" },
+        { id: "m_d14_fog1", day: 14, cat: "event", titleJa: "平原エリアの霧解除", titleEn: "Plains Fog Clears", desc: "マップ上の平原エリアの霧が晴れ、同盟領地の拡大と高レベル資源タイルへの進出が可能になります。", prep: "同盟本部の移設や熊罠まわりの都市配置を都市マップで計画しておきましょう。" },
+        { id: "m_d25_fish", day: 25, cat: "event", titleJa: "釣り・神秘の試練・英雄装備再鍛造", titleEn: "Fishing / Mystic Trial / Hero Gear Reforge", desc: "定期ミニコンテンツや英雄装備の強化・再鍛造機能が順次開放されます。", prep: "英雄装備の経験値パーツは主力3兵種（弓・騎・歩）に集中投資。" },
+        { id: "m_d38_fog2", day: 38, cat: "event", titleJa: "肥沃な大地の霧解除", titleEn: "Fertile Land Fog Clears", desc: "王城周辺の肥沃な大地が開放され、王城決戦に向けた前線拠点づくりが始まります。", prep: "高レベル採集場・要塞へのアクセスを確認。" },
+        { id: "m_d40_gen2", day: 40, cat: "hero", titleJa: "第2世代英雄（S2）：ゾーイ・ヒルデ・マリン", titleEn: "Generation 2 Heroes (Zoe / Hilde / Marlin)", desc: "ラッキールーレット等にゾーイ（歩）・ヒルデ（騎）・マリン（弓）が登場！巨熊でもマリン・ヒルデが即戦力に。", prep: "ラッキールーレット用にダイヤを約16万〜温存しておくとゾーイ等を星4以上にしやすいです。" },
+        { id: "m_d45_exch", day: 45, cat: "event", titleJa: "同盟資源交換の解禁", titleEn: "Alliance Resource Exchange", desc: "同盟メンバー同士で余った資源を交換・融通できるようになります。", prep: "不足しがちな資源の融通やイベント時の調整に活用。" },
+        { id: "m_d54_castle", day: 54, cat: "event", titleJa: "初・王城決戦（サンファイア城争奪）", titleEn: "First Castle Battle", desc: "王国最初の王城決戦！勝利同盟から初代国王が選出され、国王バフ（建設/研究/訓練速度UP）が使えるようになります。", prep: "治療加速・兵士回復資源・戦闘バフを事前準備。" },
+        { id: "m_d55_pet1", day: 55, cat: "pet", titleJa: "第1世代ペット解禁（灰色オオカミ・オオヤマネコ・バイソン）", titleEn: "Generation 1 Pets (Gray Wolf / Lynx / Bison)", desc: "ペット育成システムが開放！体力回復や採集・戦闘バフをもたらす初期ペットが登場します。", prep: "野獣狩りやデイリーでペット餌・調教マークを毎日回収。" },
+        { id: "m_d70_tg1", day: 70, cat: "building", titleJa: "黄金時代（Truegold TG1〜TG3）開幕", titleEn: "The Age of Truegold (TG1 - TG3)", desc: "タウンセンターLv30の先となる「黄金（TG1〜3）」が解禁！兵士の火力・耐久が劇的に跳ね上がります。", prep: "黄金の欠片（Truegold）を毎日欠かさず回収し、兵舎（特に弓兵舎）とタウンセンターを優先強化。" },
+        { id: "m_d75_kvk", day: 75, cat: "event", titleJa: "初・最強王国（KvK）準備フェーズ解禁", titleEn: "First Kingdom of Power (KvK)", desc: "他サーバーとの全面対抗戦（最強王国）が開幕！準備フェーズ（月〜金）と王城戦（土）で豪華報酬が狙えます。", prep: "黄金・加速・宝石・英雄欠片・ペット素材は最強王国の対象日に合わせて放出！" },
+        { id: "m_d78_pet2", day: 78, cat: "pet", titleJa: "第2世代ペット解禁（チーター・ヘラジカ）", titleEn: "Generation 2 Pets (Cheetah / Moose)", desc: "戦闘・遠征に役立つ第2世代ペットが追加されます。", prep: "ペットの調教素材を最強王国や同盟対決のペット対象日にまとめて消費。" },
+        { id: "m_d110_gen3", day: 110, cat: "hero", titleJa: "第3世代英雄（S3）：エリック・ペーラ・イェーガー", titleEn: "Generation 3 Heroes (Eric / Petra / Jaeger)", desc: "巨熊超重要キャラ「ペーラ（騎）」と「イェーガー（弓）」が登場！ペーラの敵被ダメ+50%は集結主・乗り手ともに最強クラス。", prep: "ペーラの獲得＆専用装備・スキルLv5を最優先で狙いましょう（※ゾーイとのスキル干渉に注意）。" },
+        { id: "m_d110_pet3", day: 110, cat: "pet", titleJa: "第3世代ペット解禁（ライオン・ハイイログマ）", titleEn: "Generation 3 Pets (Lion / Grizzly Bear)", desc: "第3世代英雄と同時期に火力・耐久系の上位ペットが解禁されます。", prep: "ペット解放直後の育成用に調教マークを温存。" },
+        { id: "m_d150_tg5", day: 150, cat: "building", titleJa: "黄金 TG4〜TG5 ＆ 黄金るつぼ解禁（王国移民対象）", titleEn: "Truegold 4-5 & Truegold Crucible / Transfer Eligible", desc: "黄金Lv4〜5と「黄金るつぼ（黄金精錬）」が解禁！この段階からクロスサーバー王国移民の対象帯に入ります。", prep: "TG5到達に向けて黄金と加速を温存。精錬は毎日割引分を優先。" },
+        { id: "m_d195_gen4", day: 195, cat: "hero", titleJa: "第4世代英雄（S4）：アルカ・マーゴ・ローザ", titleEn: "Generation 4 Heroes (Alcar / Margot / Rosa)", desc: "熊編成の定番「マーゴ（騎・攻撃+25%）」「ローザ（弓）」「アルカ（歩・集結主向き）」が登場！", prep: "マーゴは乗り手Sランク筆頭クラス。ルーレット＆汎用欠片の投入先として超優秀です。" },
+        { id: "m_d195_pet4", day: 195, cat: "pet", titleJa: "第4世代ペット解禁（ジャイアントライノ・マイティバイソン）", titleEn: "Generation 4 Pets (Giant Rhino / Mighty Bison)", desc: "第4世代英雄と同時に強力な戦闘バフを持つ第4世代ペットが登場します。", prep: "最強王国のペット対象日に合わせて一気にレベル上げ。" },
+        { id: "m_d220_waracad", day: 220, cat: "building", titleJa: "戦争学院（War Academy）＆ T11 黄金兵士解禁", titleEn: "War Academy & T11 Truegold Troops", desc: "最重要マイルストーン！「戦争学院」が解禁され、黄金の粉塵を使って T11 歩兵・騎兵・弓兵の研究と出撃枠・集結容量の拡張が可能になります。", prep: "黄金・鋼材・研究加速を大量に消費します。巨熊重視ならまず「T11 弓兵」ルートから最優先で解放！" },
+        { id: "m_d275_gen5", day: 275, cat: "hero", titleJa: "第5世代英雄（S5）：龍飛・スルード・ビビアン", titleEn: "Generation 5 Heroes (Long Fei / Thrud / Vivian)", desc: "巨熊Sランクの「ビビアン（弓・敵被ダメ+25%）」と「スルード（騎）」「龍飛（歩）」が登場！", prep: "ビビアンは重複不可枠ですが超強力。S4のローザから弓集結主を更新する絶好のタイミングです。" },
+        { id: "m_d275_pet5", day: 275, cat: "pet", titleJa: "第5世代ペット解禁（グレートムース・アルファ黒豹）", titleEn: "Generation 5 Pets (Great Moose / Alpha Black Panther)", desc: "第5世代英雄に合わせて上位戦闘ペットが追加されます。", prep: "ペット用アイテムをイベント日に合わせて投入。" },
+        { id: "m_d315_tg68", day: 315, cat: "building", titleJa: "黄金 TG6〜TG8 ＆ 精錬黄金（超精錬）解禁", titleEn: "Truegold 6-8 & Tempered Truegold", desc: "さらなる高みである TG6〜TG8 と精錬黄金システムが開放され、上級研究ツリーも拡張されます。", prep: "普段の黄金回収に加え、精錬黄金の毎日割引分をコツコツ積み上げるのが重要。" },
+        { id: "m_d355_gen6", day: 355, cat: "hero", titleJa: "第6世代英雄（S6）：トリトン・ソフィア・ヤン", titleEn: "Generation 6 Heroes (Triton / Sophia / Yang)", desc: "弓集結主の大幅強化となる「ヤン（弓）」と耐久・騎兵強化の「トリトン（歩）」「ソフィア（騎）」が登場。", prep: "ヤンは4ターン毎の追加攻撃が強力。S5ビビアンからの弓主力ステップアップ候補。" },
+        { id: "m_d355_pet6", day: 355, cat: "pet", titleJa: "第6世代ペット解禁（装甲戦象・白ライオン）", titleEn: "Generation 6 Pets (Ironclad War Elephant / Regal White Lion)", desc: "第6世代英雄と同時に高倍率バフを持つ第6世代ペットが解禁されます。", prep: "イベント報酬でペット育成素材を確保。" },
+        { id: "m_d440_gen7", day: 440, cat: "hero", titleJa: "第7世代英雄（S7）：チャールズ・アイヴァ・レン&ロン", titleEn: "Generation 7 Heroes (Charles / Aiva / Ren & Ron)", desc: "騎兵最強格「アイヴァ（敵防御-25%）」と弓最強格「レン&ロン（攻撃+15%&殺傷+10%）」が登場！熊スコアが一気に伸びる世代。", prep: "アイヴァとレン&ロンはどちらも乗り手・集結主両対応の超当たり世代。汎用欠片を温存推奨！" },
+        { id: "m_d440_pet7", day: 440, cat: "pet", titleJa: "第7世代ペット解禁（装甲戦熊 ほか）", titleEn: "Generation 7 Pets (Ironclad War Bear)", desc: "第7世代に合わせた最上位クラスの戦闘ペットが解禁されます。", prep: "ペット調教素材を温存して一気に強化。" },
+        { id: "m_d530_gen8", day: 530, cat: "hero", titleJa: "第8世代英雄（S8）：ディエゴ・リズ・ルナ", titleEn: "Generation 8 Heroes (Diego / Liz / Luna)", desc: "現環境最前線の「ルナ（弓・攻撃+25%）」「リズ（騎・殺傷+50%確率）」「ディエゴ（歩・集結主向き）」が登場！", prep: "ルナ・リズともに巨熊Sランク筆頭。ダイヤと汎用欠片を最大限温存して備えましょう。" }
+      ];
+
+      let sharedSettings = RBNSuite.loadSharedSettings();
+      let db = null;
+      let activeFirebaseRef = null;
+      let currentServerId = "2011";
+      let currentData = null; // { serverId, openedDate, sourceLabel, updatedAt, milestones: [...] }
+      let activeCategory = "all";
+      let activeScope = "upcoming";
+      let isFetchingAi = false;
+
+      const serverIdInput = document.getElementById("serverIdInput");
+      const switchServerBtn = document.getElementById("switchServerBtn");
+      const openedDateInput = document.getElementById("openedDateInput");
+      const serverDayInput = document.getElementById("serverDayInput");
+      const preset2011Btn = document.getElementById("preset2011Btn");
+      const fetchUrlBtn = document.getElementById("fetchUrlBtn");
+      const openPasteModalBtn = document.getElementById("openPasteModalBtn");
+      const origSiteLink = document.getElementById("origSiteLink");
+      const gtransSiteLink = document.getElementById("gtransSiteLink");
+      const fetchStatusBox = document.getElementById("fetchStatusBox");
+      const apiKeyMiniStatus = document.getElementById("apiKeyMiniStatus");
+      const syncBadge = document.getElementById("syncBadge");
+
+      const heroKingdomLabel = document.getElementById("heroKingdomLabel");
+      const heroDayPill = document.getElementById("heroDayPill");
+      const heroSourceTag = document.getElementById("heroSourceTag");
+      const nextCardsGrid = document.getElementById("nextCardsGrid");
+      const timelineList = document.getElementById("timelineList");
+
+      const catFilterGroup = document.getElementById("catFilterGroup");
+      const scopeFilterGroup = document.getElementById("scopeFilterGroup");
+      const addMilestoneBtn = document.getElementById("addMilestoneBtn");
+      const resetBaselineBtn = document.getElementById("resetBaselineBtn");
+      const adminPassInput = document.getElementById("adminPassInput");
+      const publishCloudBtn = document.getElementById("publishCloudBtn");
+      const reloadPageBtn = document.getElementById("reloadPageBtn");
+
+      const pasteImportModal = document.getElementById("pasteImportModal");
+      const pasteRawTextarea = document.getElementById("pasteRawTextarea");
+      const pasteErrMsg = document.getElementById("pasteErrMsg");
+      const runPasteParseBtn = document.getElementById("runPasteParseBtn");
+
+      const editMilestoneModal = document.getElementById("editMilestoneModal");
+      const settingsModal = document.getElementById("settingsModal");
+
+      // ==================== 日付ユーティリティ（JSTローカル基準） ====================
+      function getTodayYmd() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const d = String(now.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+
+      function parseYmdToUtcMs(ymd) {
+        const m = String(ymd || "").trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (!m) return null;
+        return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      }
+
+      function addDaysToYmd(ymd, deltaDays) {
+        const ms = parseYmdToUtcMs(ymd);
+        if (ms === null) return "";
+        const dt = new Date(ms + Math.round(deltaDays) * 86400000);
+        const y = dt.getUTCFullYear();
+        const mo = String(dt.getUTCMonth() + 1).padStart(2, "0");
+        const da = String(dt.getUTCDate()).padStart(2, "0");
+        return `${y}-${mo}-${da}`;
+      }
+
+      function diffDaysYmd(fromYmd, toYmd) {
+        const a = parseYmdToUtcMs(fromYmd);
+        const b = parseYmdToUtcMs(toYmd);
+        if (a === null || b === null) return 0;
+        return Math.round((b - a) / 86400000);
+      }
+
+      function formatJaDateWithDow(ymd) {
+        const ms = parseYmdToUtcMs(ymd);
+        if (ms === null) return ymd || "日付未定";
+        const dt = new Date(ms);
+        const dows = ["日", "月", "火", "水", "木", "金", "土"];
+        const y = dt.getUTCFullYear();
+        const mo = dt.getUTCMonth() + 1;
+        const da = dt.getUTCDate();
+        return `${y}/${mo}/${da}（${dows[dt.getUTCDay()]}）`;
+      }
+
+      function estimateOpenedDateForServer(serverIdStr) {
+        if (KNOWN_SERVER_OPEN_DATES[serverIdStr]) return KNOWN_SERVER_OPEN_DATES[serverIdStr];
+        // #2011 = 2026-05-01 を基準に大まかに1日約3〜4サーバー開設と仮推定（あとで自動取得や手修正可能）
+        const num = Number(serverIdStr);
+        if (!Number.isFinite(num) || num <= 0) return "2026-05-01";
+        const deltaDays = Math.round((num - 2011) / 3.5);
+        return addDaysToYmd("2026-05-01", deltaDays) || "2026-05-01";
+      }
+
+      function createBaselineData(serverIdStr, openedDateOpt) {
+        const sid = String(serverIdStr || "2011").replace(/[^\d]/g, "") || "2011";
+        const opened = parseYmdToUtcMs(openedDateOpt) !== null ? openedDateOpt : estimateOpenedDateForServer(sid);
+        return {
+          serverId: sid,
+          openedDate: opened,
+          sourceLabel: sid === "2011" ? "📋 標準スケジュール（#2011基準）" : `📋 標準スケジュール（#${sid}仮推定・最新取得推奨）`,
+          updatedAt: 0,
+          milestones: JSON.parse(JSON.stringify(DEFAULT_MILESTONES))
+        };
+      }
+
+      // ==================== ローカル保存 ====================
+      function loadAllLocalTimelines() {
+        try {
+          const raw = localStorage.getItem(LOCAL_STORE_KEY);
+          if (!raw) return {};
+          const parsed = JSON.parse(raw);
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch (_) {
+          return {};
+        }
+      }
+
+      function saveCurrentToLocal() {
+        if (!currentData || !currentData.serverId) return;
+        try {
+          const all = loadAllLocalTimelines();
+          all[currentData.serverId] = currentData;
+          localStorage.setItem(LOCAL_STORE_KEY, JSON.stringify(all));
+          localStorage.setItem(LAST_SERVER_KEY, currentData.serverId);
+        } catch (_) {}
+      }
+
+      function getEffectiveApiKey() {
+        const fromShared = sharedSettings && sharedSettings.ai && sharedSettings.ai.studioApiKey
+          ? String(sharedSettings.ai.studioApiKey).trim()
+          : "";
+        if (fromShared) return fromShared;
+        try {
+          return String(localStorage.getItem("ks_gemini_api_key") || "").trim();
+        } catch (_) {
+          return "";
+        }
+      }
+
+      function getSelectedTimelineModel() {
+        try {
+          return localStorage.getItem(TIMELINE_MODEL_KEY) || "gemini-2.5-flash";
+        } catch (_) {
+          return "gemini-2.5-flash";
+        }
+      }
+
+      function updateApiStatusUI() {
+        const key = getEffectiveApiKey();
+        if (key) {
+          apiKeyMiniStatus.textContent = "✅ Gemini APIキー設定済（ワンクリック取得OK）";
+          apiKeyMiniStatus.style.color = "#6ee7b7";
+        } else {
+          apiKeyMiniStatus.textContent = "⚠️ APIキー未設定（⚙️設定から登録するとワンクリック取得可）";
+          apiKeyMiniStatus.style.color = "#fcd34d";
+        }
+      }
+
+      function updateExternalLinks() {
+        const sid = encodeURIComponent(currentServerId);
+        const origUrl = `https://kingshot.net/kingdom-timeline/${sid}`;
+        const gtransUrl = `https://kingshot-net.translate.goog/kingdom-timeline/${sid}?_x_tr_sl=en&_x_tr_tl=ja`;
+        if (origSiteLink) origSiteLink.href = origUrl;
+        if (gtransSiteLink) gtransSiteLink.href = gtransUrl;
+      }
+
+      function showFetchStatus(msg, tone) {
+        if (!msg) {
+          fetchStatusBox.className = "fetch-status";
+          fetchStatusBox.textContent = "";
+          return;
+        }
+        fetchStatusBox.textContent = msg;
+        fetchStatusBox.className = "fetch-status show" + (tone ? " " + tone : "");
+      }
+
+      // ==================== 描画ロジック ====================
+      function resolveMilestoneDate(item, openedDate) {
+        if (item.fixedDate && parseYmdToUtcMs(item.fixedDate) !== null) {
+          return item.fixedDate;
+        }
+        return addDaysToYmd(openedDate, Number(item.day) || 0);
+      }
+
+      function resolveMilestoneDay(item, openedDate) {
+        if (item.fixedDate && parseYmdToUtcMs(item.fixedDate) !== null && parseYmdToUtcMs(openedDate) !== null) {
+          return diffDaysYmd(openedDate, item.fixedDate);
+        }
+        return Number(item.day) || 0;
+      }
+
+      function renderTimeline() {
+        if (!currentData) return;
+        const today = getTodayYmd();
+        const opened = currentData.openedDate || "2026-05-01";
+        const currentDay = Math.max(0, diffDaysYmd(opened, today));
+
+        serverIdInput.value = currentData.serverId;
+        openedDateInput.value = opened;
+        serverDayInput.value = String(currentDay);
+        updateExternalLinks();
+
+        heroKingdomLabel.textContent = `🏰 #${currentData.serverId} サーバー（開設：${formatJaDateWithDow(opened)}）`;
+        heroDayPill.textContent = `現在 Day ${currentDay}`;
+        const updatedStr = currentData.updatedAt
+          ? `（更新: ${new Date(currentData.updatedAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}）`
+          : "";
+        heroSourceTag.textContent = `${currentData.sourceLabel || "📋 標準タイムライン"}${updatedStr}`;
+
+        // マイルストーン日付計算＆ソート
+        const enriched = (currentData.milestones || []).map((item) => {
+          const dateYmd = resolveMilestoneDate(item, opened);
+          const dayNum = resolveMilestoneDay(item, opened);
+          const daysLeft = diffDaysYmd(today, dateYmd);
+          return { ...item, dateYmd, dayNum, daysLeft };
+        }).sort((a, b) => a.daysLeft - b.daysLeft || a.dayNum - b.dayNum);
+
+        // 上部ハイライト：直近の今後の予定（最大3件）
+        const upcomingAll = enriched.filter((it) => it.daysLeft >= 0);
+        nextCardsGrid.innerHTML = "";
+        if (upcomingAll.length === 0) {
+          nextCardsGrid.innerHTML = `<div class="next-card" style="grid-column:1/-1;"><div class="next-title">登録されている全マイルストーンが解禁済みです 🎉</div><div class="next-prep">「🔄 kingshot.net から最新情報を取得＆日本語化」で新世代の予定を確認してみてください。</div></div>`;
+        } else {
+          upcomingAll.slice(0, 3).forEach((it, idx) => {
+            const card = document.createElement("div");
+            card.className = "next-card" + (idx === 0 ? " primary-next" : "");
+            const cdText = it.daysLeft === 0 ? "🔥 本日解禁！" : `⏳ あと ${it.daysLeft}日`;
+            card.innerHTML = `
+              <div class="next-countdown">${cdText}（Day ${it.dayNum}）</div>
+              <div class="next-title"></div>
+              <div class="next-date">${formatJaDateWithDow(it.dateYmd)}</div>
+              <div class="next-prep"></div>
+            `;
+            card.querySelector(".next-title").textContent = it.titleJa;
+            card.querySelector(".next-prep").textContent = it.prep || it.desc || "";
+            nextCardsGrid.appendChild(card);
+          });
+        }
+
+        // フィルタ適用
+        const catMeta = {
+          hero: { cls: "hero", label: "⚔️ 英雄" },
+          pet: { cls: "pet", label: "🐾 ペット" },
+          building: { cls: "building", label: "🏗️ 黄金・施設" },
+          event: { cls: "event", label: "🚩 イベント" }
+        };
+
+        const filtered = enriched.filter((it) => {
+          if (activeCategory !== "all" && it.cat !== activeCategory) return false;
+          if (activeScope === "upcoming" && it.daysLeft < 0) return false;
+          return true;
+        });
+
+        timelineList.innerHTML = "";
+        if (filtered.length === 0) {
+          const empty = document.createElement("div");
+          empty.style.cssText = "padding:18px; text-align:center; font-size:0.84rem; color:var(--muted);";
+          empty.textContent = "条件に一致するスケジュールはありません（「過去も含む」や「すべて」に切り替えてみてください）。";
+          timelineList.appendChild(empty);
+          return;
+        }
+
+        filtered.forEach((it) => {
+          const isPast = it.daysLeft < 0;
+          const isSoon = it.daysLeft >= 0 && it.daysLeft <= 14;
+          const cm = catMeta[it.cat] || catMeta.event;
+
+          const row = document.createElement("div");
+          row.className = `tl-item cat-${cm.cls}${isPast ? " is-past" : ""}${isSoon ? " is-soon" : ""}`;
+
+          const dateCol = document.createElement("div");
+          dateCol.className = "tl-date-col";
+          const cdBadge = document.createElement("span");
+          cdBadge.className = `tl-countdown-badge ${isPast ? "past" : isSoon ? "soon" : "future"}`;
+          cdBadge.textContent =
+            it.daysLeft === 0 ? "🔥 本日！" :
+            it.daysLeft > 0 ? `あと ${it.daysLeft}日` :
+            `済（${Math.abs(it.daysLeft)}日前）`;
+
+          const dateTxt = document.createElement("div");
+          dateTxt.className = "tl-date-text";
+          dateTxt.textContent = formatJaDateWithDow(it.dateYmd);
+
+          const dayTxt = document.createElement("div");
+          dayTxt.className = "tl-day-text";
+          dayTxt.textContent = `Day ${it.dayNum}${it.fixedDate ? "（日付固定）" : ""}`;
+
+          dateCol.append(cdBadge, dateTxt, dayTxt);
+
+          const body = document.createElement("div");
+          body.className = "tl-body";
+
+          const titleRow = document.createElement("div");
+          titleRow.className = "tl-title-row";
+
+          const catSpan = document.createElement("span");
+          catSpan.className = `cat-tag ${cm.cls}`;
+          catSpan.textContent = cm.label;
+
+          const titleSpan = document.createElement("span");
+          titleSpan.className = "tl-item-title";
+          titleSpan.textContent = it.titleJa;
+
+          titleRow.append(catSpan, titleSpan);
+          if (it.titleEn) {
+            const enSpan = document.createElement("span");
+            enSpan.className = "tl-item-en";
+            enSpan.textContent = `(${it.titleEn})`;
+            titleRow.appendChild(enSpan);
+          }
+
+          body.appendChild(titleRow);
+
+          if (it.desc) {
+            const descEl = document.createElement("div");
+            descEl.className = "tl-item-desc";
+            descEl.textContent = it.desc;
+            body.appendChild(descEl);
+          }
+          if (it.prep) {
+            const prepEl = document.createElement("div");
+            prepEl.className = "tl-item-prep";
+            prepEl.textContent = `💡 準備メモ：${it.prep}`;
+            body.appendChild(prepEl);
+          }
+
+          const editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "tl-edit-btn";
+          editBtn.textContent = "✏️";
+          editBtn.title = "この予定の日付・内容を編集";
+          editBtn.addEventListener("click", () => openEditMilestoneModal(it.id));
+
+          row.append(dateCol, body, editBtn);
+          timelineList.appendChild(row);
+        });
+      }
+
+      // ==================== Gemini API ワンクリックURL取得＆日本語翻訳 ====================
+      function extractJsonFromModelText(rawText) {
+        let cleaned = String(rawText || "").trim();
+        const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
+        if (fence) cleaned = fence[1].trim();
+        try {
+          return JSON.parse(cleaned);
+        } catch (_) {
+          const fb = cleaned.indexOf("{");
+          const lb = cleaned.lastIndexOf("}");
+          if (fb >= 0 && lb > fb) {
+            return JSON.parse(cleaned.slice(fb, lb + 1));
+          }
+          throw new Error("AIの応答からJSONを抽出できませんでした");
+        }
+      }
+
+      function buildTranslationPromptForUrl(serverId) {
+        const targetUrl = `https://kingshot.net/kingdom-timeline/${serverId}`;
+        const today = getTodayYmd();
+        return [
+          `次のURLにアクセスし、スマホゲーム『Kingshot（キングショット）』の王国 #${serverId} の最新タイムライン情報（開設日・現在の経過日数・英雄世代・ペット世代・黄金時代/TG・戦争学院/T11・各種イベント解禁予定）をすべて読み取り、日本人プレイヤー向けに分かりやすく翻訳・整理したJSONのみを出力してください。`,
+          `対象URL: ${targetUrl}`,
+          `基準日（今日）: ${today}`,
+          "",
+          "【必ず守る翻訳ルール（日本語版キングショット・アルテマ準拠）】",
+          "- 英雄名の日本語統一：Amadeus→アマデウス / Helga→ヘルガ / Jabel→ジェベル / Saul→サロ / Zoe→ゾーイ / Hilde→ヒルデ / Marlin→マリン / Eric→エリック / Petra→ペーラ / Jaeger→イェーガー / Alcar→アルカ / Margot→マーゴ / Rosa→ローザ / Long Fei→龍飛 / Thrud→スルード / Vivian→ビビアン / Triton→トリトン / Sophia→ソフィア / Yang→ヤン / Charles→チャールズ / Ava/Aiva→アイヴァ / Wee & Woo / Ren & Ron→レン&ロン / Diego→ディエゴ / Liz→リズ / Luna→ルナ",
+          "- 用語の日本語統一：Truegold (TG)→黄金（TG） / War Academy→戦争学院 / Castle Battle→王城決戦 / Sanctuary→聖域戦 / Fortress→要塞戦 / Hall of Governors→最強領主（総督の殿堂） / Kingdom of Power (KvK)→最強王国（KvK） / Truegold Crucible→黄金るつぼ / Kingdom Transfer→王国移民 / Hero Gear Reforge→英雄装備再鍛造",
+          "",
+          "【出力JSON形式（この形式の ```json コードブロックのみ出力）】",
+          "```json",
+          "{",
+          `  "serverId": "${serverId}",`,
+          '  "openedDate": "YYYY-MM-DD",',
+          '  "note": "取得できた情報や進行度調整に関する補足（1行）",',
+          '  "milestones": [',
+          "    {",
+          '      "day": 220,',
+          '      "fixedDate": "YYYY-MM-DD（元サイトに具体日付があれば記載、なければ空文字）",',
+          '      "cat": "hero | pet | building | event",',
+          '      "titleJa": "分かりやすい日本語タイトル",',
+          '      "titleEn": "元サイトの英語名",',
+          '      "desc": "日本語での簡潔な説明（登場キャラ名や内容）",',
+          '      "prep": "プレイヤー向けの短い事前準備アドバイス（1文）"',
+          "    }",
+          "  ]",
+          "}",
+          "```"
+        ].join("\n");
+      }
+
+      function buildTranslationPromptForPastedText(serverId, pastedText) {
+        return [
+          `以下は『Kingshot（キングショット）』の王国 #${serverId} のタイムライン（kingshot.net）からコピーしたテキストです。`,
+          "このテキストから開設日とすべての解禁マイルストーン（英雄・ペット・黄金/施設・イベント）を抽出し、日本人プレイヤー向けに分かりやすく翻訳・整理したJSONのみを出力してください。",
+          "英雄名はアルテマ準拠の日本語名（ペーラ・アルカ・マーゴ・ローザ・龍飛・スルード・ビビアン・トリトン・ソフィア・ヤン・アイヴァ・レン&ロン・ディエゴ・リズ・ルナ等）、Truegoldは「黄金（TG）」、War Academyは「戦争学院」に統一してください。",
+          "",
+          "【出力JSON形式（```json コードブロックのみ出力）】",
+          "```json",
+          "{",
+          `  "serverId": "${serverId}",`,
+          '  "openedDate": "YYYY-MM-DD",',
+          '  "milestones": [',
+          '    { "day": 220, "fixedDate": "YYYY-MM-DD", "cat": "building", "titleJa": "日本語タイトル", "titleEn": "English Name", "desc": "説明", "prep": "準備アドバイス" }',
+          "  ]",
+          "}",
+          "```",
+          "",
+          "【貼り付けテキスト】",
+          pastedText.slice(0, 22000)
+        ].join("\n");
+      }
+
+      async function callGeminiTimeline(apiKey, promptText, useUrlTools, onStatus) {
+        const primary = getSelectedTimelineModel();
+        const models = [...new Set([primary, "gemini-2.5-flash", "gemini-flash-preview"])];
+        let lastErr = null;
+
+        for (let i = 0; i < models.length; i++) {
+          const modelName = models[i];
+          if (onStatus) onStatus(`${modelName} で${useUrlTools ? "URL読込＆日本語翻訳" : "テキスト解析＆日本語翻訳"}中...`);
+
+          const bodyObj = {
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: { temperature: 0.15 }
+          };
+          if (useUrlTools) {
+            bodyObj.tools = [{ url_context: {} }, { google_search: {} }];
+          }
+
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(bodyObj)
+            });
+            let data = null;
+            try { data = await res.json(); } catch (_) {}
+
+            if (!res.ok) {
+              const errMsg = data?.error?.message || `HTTP ${res.status}`;
+              lastErr = new Error(`[${modelName}] ${errMsg}`);
+              // url_context 未対応や混雑時は次のモデルへフォールバック
+              if (i < models.length - 1) continue;
+              throw lastErr;
+            }
+
+            const parts = data?.candidates?.[0]?.content?.parts || [];
+            const rawText = parts.map((p) => p.text || "").join("\n").trim();
+            if (!rawText) throw new Error(`[${modelName}] 応答が空でした`);
+            const parsed = extractJsonFromModelText(rawText);
+            return { parsed, modelUsed: modelName };
+          } catch (err) {
+            lastErr = err;
+            if (i < models.length - 1) continue;
+            throw err;
+          }
+        }
+        throw lastErr || new Error("取得に失敗しました");
+      }
+
+      function normalizeParsedTimeline(parsed, serverId, sourceLabel) {
+        const opened = parseYmdToUtcMs(parsed?.openedDate) !== null
+          ? parsed.openedDate
+          : (currentData?.openedDate || estimateOpenedDateForServer(serverId));
+
+        const rawList = Array.isArray(parsed?.milestones) ? parsed.milestones : [];
+        const validCats = new Set(["hero", "pet", "building", "event"]);
+        const cleaned = rawList
+          .map((m, idx) => {
+            const titleJa = String(m?.titleJa || m?.title || "").trim();
+            if (!titleJa) return null;
+            const fixed = parseYmdToUtcMs(m?.fixedDate) !== null ? m.fixedDate : "";
+            let dayNum = Number(m?.day);
+            if (!Number.isFinite(dayNum)) {
+              dayNum = fixed ? diffDaysYmd(opened, fixed) : 0;
+            }
+            const cat = validCats.has(m?.cat) ? m.cat : "event";
+            return {
+              id: `ai_${Date.now()}_${idx}`,
+              day: Math.round(dayNum),
+              fixedDate: fixed,
+              cat,
+              titleJa,
+              titleEn: String(m?.titleEn || "").trim(),
+              desc: String(m?.desc || "").trim(),
+              prep: String(m?.prep || "").trim()
+            };
+          })
+          .filter(Boolean);
+
+        if (cleaned.length < 3) {
+          throw new Error("マイルストーンを十分に取得できませんでした。元サイトをコピーして「📋 テキスト貼付でAI翻訳」をお試しください。");
+        }
+
+        return {
+          serverId: String(serverId),
+          openedDate: opened,
+          sourceLabel,
+          updatedAt: Date.now(),
+          milestones: cleaned
+        };
+      }
+
+      async function fetchLatestFromKingshotNet() {
+        if (isFetchingAi) return;
+        const apiKey = getEffectiveApiKey();
+        if (!apiKey) {
+          showFetchStatus("⚠️ AI Studio APIキーが未設定です。右上の「⚙️ 設定」からAPIキーを登録してください。", "err");
+          RBNSuite.showToast("⚠️ 先に⚙️設定からAPIキーを登録してください", "warn");
+          return;
+        }
+
+        const sid = String(serverIdInput.value || currentServerId || "2011").replace(/[^\d]/g, "") || "2011";
+        currentServerId = sid;
+        isFetchingAi = true;
+        fetchUrlBtn.disabled = true;
+        showFetchStatus(`🌐 https://kingshot.net/kingdom-timeline/${sid} の最新情報を取得＆日本語翻訳中...（10〜20秒ほどお待ちください）`, "");
+
+        try {
+          const prompt = buildTranslationPromptForUrl(sid);
+          const { parsed, modelUsed } = await callGeminiTimeline(apiKey, prompt, true, (st) => {
+            showFetchStatus(`🌐 #${sid} サーバー：${st}`, "");
+          });
+          currentData = normalizeParsedTimeline(parsed, sid, `🤖 kingshot.net 最新取得（${modelUsed}）`);
+          saveCurrentToLocal();
+          renderTimeline();
+          const noteMsg = parsed?.note ? `｜${parsed.note}` : "";
+          showFetchStatus(`✅ #${sid} サーバーの最新タイムライン（${currentData.milestones.length}件）を取得＆日本語化しました！${noteMsg}（同盟全員へ反映するには下の「☁️ 同盟全員へ配信」を押してください）`, "ok");
+          RBNSuite.showToast(`✅ #${sid} の最新タイムライン（${currentData.milestones.length}件）を取得しました！`, "ok", 3200);
+        } catch (err) {
+          showFetchStatus(`⚠️ ワンクリック取得エラー：${err?.message || err}（うまく取れない場合は「🌐 元サイト」を開いて全選択コピー →「📋 テキスト貼付でAI翻訳」をご利用ください）`, "err");
+          RBNSuite.showToast("⚠️ 取得に失敗しました（テキスト貼付をお試しください）", "error", 3200);
+        } finally {
+          isFetchingAi = false;
+          fetchUrlBtn.disabled = false;
+        }
+      }
+
+      async function parsePastedTimelineText() {
+        if (isFetchingAi) return;
+        const apiKey = getEffectiveApiKey();
+        const raw = pasteRawTextarea.value.trim();
+        pasteErrMsg.textContent = "";
+        if (!apiKey) {
+          pasteErrMsg.textContent = "AI Studio APIキーが未設定です。右上の「⚙️ 設定」から登録してください。";
+          return;
+        }
+        if (raw.length < 20) {
+          pasteErrMsg.textContent = "元サイトのテキストを貼り付けてください。";
+          return;
+        }
+        isFetchingAi = true;
+        runPasteParseBtn.disabled = true;
+        runPasteParseBtn.textContent = "🤖 解析＆翻訳中...";
+        try {
+          const prompt = buildTranslationPromptForPastedText(currentServerId, raw);
+          const { parsed, modelUsed } = await callGeminiTimeline(apiKey, prompt, false);
+          currentData = normalizeParsedTimeline(parsed, currentServerId, `📋 テキスト貼付AI翻訳（${modelUsed}）`);
+          saveCurrentToLocal();
+          renderTimeline();
+          pasteImportModal.classList.remove("open");
+          showFetchStatus(`✅ 貼り付けテキストから #${currentServerId} のタイムライン（${currentData.milestones.length}件）を日本語化しました！`, "ok");
+          RBNSuite.showToast(`✅ ${currentData.milestones.length}件の予定を日本語化しました！`, "ok");
+        } catch (err) {
+          pasteErrMsg.textContent = `エラー：${err?.message || err}`;
+        } finally {
+          isFetchingAi = false;
+          runPasteParseBtn.disabled = false;
+          runPasteParseBtn.textContent = "🤖 AIで日本語タイムラインへ変換";
+        }
+      }
+
+      // ==================== Firebase クラウド共有 ====================
+      function updateSyncBadge(online, text) {
+        syncBadge.textContent = text || (online ? "🟢 Firebase同期中" : "⚪ ローカル動作");
+        syncBadge.classList.toggle("offline", !online);
+      }
+
+      function attachFirebaseForServer(serverId) {
+        const dbUrl = (sharedSettings.firebase && sharedSettings.firebase.databaseUrl) || RBNSuite.FIREBASE_CONFIG.databaseURL;
+        const res = RBNSuite.initRealtimeDatabase({ databaseUrl: dbUrl, customAppName: "timelineApp" });
+        if (!res.ok) {
+          updateSyncBadge(false);
+          return;
+        }
+        if (activeFirebaseRef) {
+          try { activeFirebaseRef.off(); } catch (_) {}
+          activeFirebaseRef = null;
+        }
+        db = res.db;
+        const ref = db.ref(`${DB_ROOT}/${serverId}`);
+        activeFirebaseRef = ref;
+        ref.on("value", (snap) => {
+          updateSyncBadge(true, `🟢 Firebase同期中 (#${serverId})`);
+          const val = snap.val();
+          if (val && Array.isArray(val.milestones) && val.milestones.length > 0) {
+            const remoteUpdated = Number(val.updatedAt) || 0;
+            const localUpdated = Number(currentData?.updatedAt) || 0;
+            if (remoteUpdated >= localUpdated) {
+              currentData = {
+                serverId: String(val.serverId || serverId),
+                openedDate: parseYmdToUtcMs(val.openedDate) !== null ? val.openedDate : estimateOpenedDateForServer(serverId),
+                sourceLabel: val.sourceLabel || "☁️ Firebase 同盟共有データ",
+                updatedAt: remoteUpdated || Date.now(),
+                milestones: val.milestones
+              };
+              saveCurrentToLocal();
+              renderTimeline();
+            }
+          }
+        }, () => {
+          updateSyncBadge(false, "⚪ ローカル動作");
+        });
+      }
+
+      function publishCurrentToFirebase() {
+        const pass = adminPassInput.value.trim();
+        if (pass !== ADMIN_PASSCODE) {
+          return alert("幹部パスコードが正しくありません。");
+        }
+        if (!db) attachFirebaseForServer(currentServerId);
+        if (!db) return alert("Firebaseに接続できません。設定を確認してください。");
+
+        const payload = {
+          editPin: ADMIN_PASSCODE,
+          serverId: currentData.serverId,
+          openedDate: currentData.openedDate,
+          sourceLabel: `☁️ 同盟共有（#${currentData.serverId}）`,
+          updatedAt: Date.now(),
+          milestones: currentData.milestones
+        };
+        db.ref(`${DB_ROOT}/${currentData.serverId}`).set(payload).then(() => {
+          currentData = { ...payload };
+          saveCurrentToLocal();
+          renderTimeline();
+          RBNSuite.showToast(`☁️ #${currentData.serverId} のタイムラインを同盟全員へ配信しました！`, "ok", 3200);
+        }).catch((err) => {
+          alert("Firebase書き込みエラー（ルール設定を確認してください）：" + err.message);
+        });
+      }
+
+      // ==================== サーバー切替・手動編集 ====================
+      function switchToServer(rawSid) {
+        const sid = String(rawSid || "2011").replace(/[^\d]/g, "") || "2011";
+        currentServerId = sid;
+        const allLocal = loadAllLocalTimelines();
+        if (allLocal[sid] && Array.isArray(allLocal[sid].milestones) && allLocal[sid].milestones.length > 0) {
+          currentData = allLocal[sid];
+        } else {
+          currentData = createBaselineData(sid);
+        }
+        saveCurrentToLocal();
+        showFetchStatus("", "");
+        renderTimeline();
+        attachFirebaseForServer(sid);
+      }
+
+      function openEditMilestoneModal(itemId) {
+        const isNew = !itemId;
+        const item = isNew ? null : (currentData.milestones || []).find((m) => m.id === itemId);
+        document.getElementById("editModalTitle").textContent = isNew ? "＋ 予定を手動追加" : "✏️ 予定の編集・日付微調整";
+        document.getElementById("editItemId").value = item ? item.id : "";
+        document.getElementById("editCat").value = item ? item.cat : "event";
+        document.getElementById("editDay").value = item ? String(item.day || 0) : String(Math.max(0, diffDaysYmd(currentData.openedDate, getTodayYmd()) + 7));
+        document.getElementById("editFixedDate").value = item && item.fixedDate ? item.fixedDate : "";
+        document.getElementById("editTitleJa").value = item ? item.titleJa : "";
+        document.getElementById("editTitleEn").value = item ? (item.titleEn || "") : "";
+        document.getElementById("editDesc").value = item ? (item.desc || "") : "";
+        document.getElementById("editPrep").value = item ? (item.prep || "") : "";
+        document.getElementById("deleteMilestoneBtn").style.display = isNew ? "none" : "inline-flex";
+        editMilestoneModal.classList.add("open");
+      }
+
+      function saveMilestoneFromModal() {
+        const id = document.getElementById("editItemId").value || `custom_${Date.now()}`;
+        const titleJa = document.getElementById("editTitleJa").value.trim();
+        if (!titleJa) return alert("タイトルを入力してください。");
+
+        const entry = {
+          id,
+          cat: document.getElementById("editCat").value || "event",
+          day: Math.max(0, Math.round(Number(document.getElementById("editDay").value) || 0)),
+          fixedDate: document.getElementById("editFixedDate").value.trim(),
+          titleJa,
+          titleEn: document.getElementById("editTitleEn").value.trim(),
+          desc: document.getElementById("editDesc").value.trim(),
+          prep: document.getElementById("editPrep").value.trim()
+        };
+
+        const idx = currentData.milestones.findIndex((m) => m.id === id);
+        if (idx >= 0) currentData.milestones[idx] = entry;
+        else currentData.milestones.push(entry);
+
+        currentData.updatedAt = Date.now();
+        saveCurrentToLocal();
+        editMilestoneModal.classList.remove("open");
+        renderTimeline();
+        RBNSuite.showToast("💾 予定を保存しました（全員へ反映するには「☁️ 同盟全員へ配信」）", "ok");
+      }
+
+      function deleteMilestoneFromModal() {
+        const id = document.getElementById("editItemId").value;
+        if (!id || !confirm("この予定をリストから削除しますか？")) return;
+        currentData.milestones = currentData.milestones.filter((m) => m.id !== id);
+        currentData.updatedAt = Date.now();
+        saveCurrentToLocal();
+        editMilestoneModal.classList.remove("open");
+        renderTimeline();
+        RBNSuite.showToast("🗑 予定を削除しました", "info");
+      }
+
+      // ==================== 設定モーダル ====================
+      function syncSettingsUI() {
+        document.getElementById("setFirebaseUrl").value = (sharedSettings.firebase && sharedSettings.firebase.databaseUrl) || RBNSuite.FIREBASE_CONFIG.databaseURL;
+        document.getElementById("setAiApiKey").value = (sharedSettings.ai && sharedSettings.ai.studioApiKey) || "";
+        document.getElementById("setTimelineModel").value = getSelectedTimelineModel();
+        const mapL = document.getElementById("headerMapLink");
+        const bearL = document.getElementById("headerBearLink");
+        const noticeL = document.getElementById("headerNoticeLink");
+        if (mapL && sharedSettings.links.cityMapUrl) mapL.href = sharedSettings.links.cityMapUrl;
+        if (bearL && sharedSettings.links.bearNavUrl) bearL.href = sharedSettings.links.bearNavUrl;
+        if (noticeL && sharedSettings.links.noticeGenUrl) noticeL.href = sharedSettings.links.noticeGenUrl;
+        updateApiStatusUI();
+      }
+
+      // ==================== イベントバインド ====================
+      switchServerBtn.addEventListener("click", () => switchToServer(serverIdInput.value));
+      serverIdInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          switchToServer(serverIdInput.value);
+        }
+      });
+      preset2011Btn.addEventListener("click", () => switchToServer("2011"));
+
+      openedDateInput.addEventListener("change", () => {
+        if (!currentData || parseYmdToUtcMs(openedDateInput.value) === null) return;
+        currentData.openedDate = openedDateInput.value;
+        currentData.updatedAt = Date.now();
+        saveCurrentToLocal();
+        renderTimeline();
+      });
+
+      serverDayInput.addEventListener("change", () => {
+        const dayVal = Math.max(0, Math.round(Number(serverDayInput.value) || 0));
+        const calcOpened = addDaysToYmd(getTodayYmd(), -dayVal);
+        if (calcOpened && currentData) {
+          currentData.openedDate = calcOpened;
+          currentData.updatedAt = Date.now();
+          saveCurrentToLocal();
+          renderTimeline();
+        }
+      });
+
+      fetchUrlBtn.addEventListener("click", fetchLatestFromKingshotNet);
+      openPasteModalBtn.addEventListener("click", () => {
+        pasteErrMsg.textContent = "";
+        pasteRawTextarea.value = "";
+        pasteImportModal.classList.add("open");
+      });
+      document.getElementById("closePasteModalBtn").addEventListener("click", () => pasteImportModal.classList.remove("open"));
+      document.getElementById("cancelPasteBtn").addEventListener("click", () => pasteImportModal.classList.remove("open"));
+      runPasteParseBtn.addEventListener("click", parsePastedTimelineText);
+
+      catFilterGroup.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-cat]");
+        if (!btn) return;
+        activeCategory = btn.dataset.cat || "all";
+        catFilterGroup.querySelectorAll("button[data-cat]").forEach((b) => b.classList.toggle("active", b.dataset.cat === activeCategory));
+        renderTimeline();
+      });
+
+      scopeFilterGroup.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-scope]");
+        if (!btn) return;
+        activeScope = btn.dataset.scope || "upcoming";
+        scopeFilterGroup.querySelectorAll("button[data-scope]").forEach((b) => b.classList.toggle("active", b.dataset.scope === activeScope));
+        renderTimeline();
+      });
+
+      addMilestoneBtn.addEventListener("click", () => openEditMilestoneModal(null));
+      resetBaselineBtn.addEventListener("click", () => {
+        if (!confirm(`#${currentServerId} のタイムラインを標準スケジュール（アルテマ準拠）へ戻しますか？`)) return;
+        currentData = createBaselineData(currentServerId, currentData?.openedDate);
+        saveCurrentToLocal();
+        renderTimeline();
+        RBNSuite.showToast("🔄 標準スケジュールへ戻しました", "info");
+      });
+      publishCloudBtn.addEventListener("click", publishCurrentToFirebase);
+
+      document.getElementById("closeEditModalBtn").addEventListener("click", () => editMilestoneModal.classList.remove("open"));
+      document.getElementById("cancelEditBtn").addEventListener("click", () => editMilestoneModal.classList.remove("open"));
+      document.getElementById("saveMilestoneBtn").addEventListener("click", saveMilestoneFromModal);
+      document.getElementById("deleteMilestoneBtn").addEventListener("click", deleteMilestoneFromModal);
+
+      document.getElementById("openSettingsBtn").addEventListener("click", () => {
+        syncSettingsUI();
+        settingsModal.classList.add("open");
+      });
+      document.getElementById("closeSettingsBtn").addEventListener("click", () => settingsModal.classList.remove("open"));
+      document.getElementById("cancelSettingsBtn").addEventListener("click", () => settingsModal.classList.remove("open"));
+      document.getElementById("saveSettingsBtn").addEventListener("click", () => {
+        const nextUrl = document.getElementById("setFirebaseUrl").value.trim();
+        const nextKey = document.getElementById("setAiApiKey").value.trim();
+        const nextModel = document.getElementById("setTimelineModel").value;
+        try { localStorage.setItem(TIMELINE_MODEL_KEY, nextModel); } catch (_) {}
+        sharedSettings = RBNSuite.saveSharedSettings({
+          links: sharedSettings.links,
+          firebase: { databaseUrl: nextUrl },
+          ai: { studioApiKey: nextKey }
+        });
+        syncSettingsUI();
+        attachFirebaseForServer(currentServerId);
+        settingsModal.classList.remove("open");
+        RBNSuite.showToast("✅ 共通設定を保存しました", "ok");
+      });
+
+      [pasteImportModal, editMilestoneModal, settingsModal].forEach((m) => {
+        m.addEventListener("click", (e) => {
+          if (e.target === m && !isFetchingAi) m.classList.remove("open");
+        });
+      });
+
+      RBNSuite.enableModalEscapeClose(() => {
+        if (!isFetchingAi) pasteImportModal.classList.remove("open");
+        editMilestoneModal.classList.remove("open");
+        settingsModal.classList.remove("open");
+      });
+
+      reloadPageBtn.addEventListener("click", () => {
+        RBNSuite.showToast("🔄 最新状態へ再読み込み中...", "info", 1400);
+        setTimeout(() => window.location.reload(), 120);
+      });
+
+      // 共通設定＆遊び心演出の連携
+      RBNSuite.watchSharedSettings((latest) => {
+        sharedSettings = latest;
+        syncSettingsUI();
+      });
+      RBNSuite.watchConnectivity({
+        onOffline: () => updateSyncBadge(false, "⚪ オフライン（ローカル）"),
+        onOnline: () => attachFirebaseForServer(currentServerId)
+      });
+
+      const playfulMount = document.getElementById("timelinePlayfulSettingsMount");
+      if (playfulMount) RBNSuite.renderPlayfulSettingsPanel(playfulMount);
+      const titleEl = document.querySelector(".tl-title");
+      if (titleEl) RBNSuite.attachTitleShowerEasterEgg(titleEl);
+      RBNSuite.ensureMemberAvatarsLoaded(false);
+
+      // 初期化（URLパラメータ ?server=xxxx または前回サーバー、既定 2011）
+      syncSettingsUI();
+      let initialServer = "2011";
+      try {
+        const sp = new URLSearchParams(window.location.search);
+        initialServer = sp.get("server") || localStorage.getItem(LAST_SERVER_KEY) || "2011";
+      } catch (_) {}
+      switchToServer(initialServer);
+    })();
+  </script>
+</body>
+</html>

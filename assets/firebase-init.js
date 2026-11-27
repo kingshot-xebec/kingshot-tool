@@ -22,25 +22,29 @@
   const DB_PATHS = Object.freeze({
     cityMap: "alliances/main_map_40x40",
     bearMaster: "bear_master",
-    noticeHistory: "kingshot_notice_history"
+    noticeHistory: "kingshot_notice_history",
+    kingdomTimeline: "kingdom_timelines"
   });
 
   const SUBPAGE_DEFAULT_LINKS = Object.freeze({
     cityMapUrl: "../map/",
     bearNavUrl: "../bear/",
-    noticeGenUrl: "../notice/"
+    noticeGenUrl: "../notice/",
+    timelineUrl: "../timeline/"
   });
 
   const ROOT_DEFAULT_LINKS = Object.freeze({
     cityMapUrl: "./map/",
     bearNavUrl: "./bear/",
-    noticeGenUrl: "./notice/"
+    noticeGenUrl: "./notice/",
+    timelineUrl: "./timeline/"
   });
 
   const LEGACY_LINK_PATTERNS = Object.freeze({
     cityMapUrl: /^(?:\.\/)?index\.html$|^(\.\.\/|\.\/)?map(?:\/(?:index\.html)?)?$/i,
     bearNavUrl: /^(?:\.\/)?rbn-bear\.html$|^(\.\.\/|\.\/)?bear(?:\/(?:index\.html)?)?$/i,
-    noticeGenUrl: /^(?:\.\/)?rbn-notice\.html$|^(\.\.\/|\.\/)?notice(?:\/(?:index\.html)?)?$/i
+    noticeGenUrl: /^(?:\.\/)?rbn-notice\.html$|^(\.\.\/|\.\/)?notice(?:\/(?:index\.html)?)?$/i,
+    timelineUrl: /^(\.\.\/|\.\/)?timeline(?:\/(?:index\.html)?)?$/i
   });
 
   function safeStorageGet(key) {
@@ -111,7 +115,8 @@
       links: {
         cityMapUrl: links.cityMapUrl,
         bearNavUrl: links.bearNavUrl,
-        noticeGenUrl: links.noticeGenUrl
+        noticeGenUrl: links.noticeGenUrl,
+        timelineUrl: links.timelineUrl
       },
       firebase: {
         databaseUrl: FIREBASE_CONFIG.databaseURL
@@ -132,7 +137,8 @@
           base.links = {
             cityMapUrl: normalizeToolLink(parsed.links && parsed.links.cityMapUrl, "cityMapUrl", options),
             bearNavUrl: normalizeToolLink(parsed.links && parsed.links.bearNavUrl, "bearNavUrl", options),
-            noticeGenUrl: normalizeToolLink(parsed.links && parsed.links.noticeGenUrl, "noticeGenUrl", options)
+            noticeGenUrl: normalizeToolLink(parsed.links && parsed.links.noticeGenUrl, "noticeGenUrl", options),
+            timelineUrl: normalizeToolLink(parsed.links && parsed.links.timelineUrl, "timelineUrl", options)
           };
           base.firebase = {
             databaseUrl:
@@ -160,7 +166,8 @@
       links: {
         cityMapUrl: normalizeToolLink(next.links && next.links.cityMapUrl, "cityMapUrl", options),
         bearNavUrl: normalizeToolLink(next.links && next.links.bearNavUrl, "bearNavUrl", options),
-        noticeGenUrl: normalizeToolLink(next.links && next.links.noticeGenUrl, "noticeGenUrl", options)
+        noticeGenUrl: normalizeToolLink(next.links && next.links.noticeGenUrl, "noticeGenUrl", options),
+        timelineUrl: normalizeToolLink(next.links && next.links.timelineUrl, "timelineUrl", options)
       },
       firebase: {
         databaseUrl:

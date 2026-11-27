@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-title" content="ks tool" />
   <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png" />
-  <link rel="stylesheet" href="./assets/common.css?v=20261126b" />
-  <script src="./assets/firebase-init.js?v=20261126b"></script>
+  <link rel="stylesheet" href="./assets/common.css?v=20261127a" />
+  <script src="./assets/firebase-init.js?v=20261127a"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -118,7 +118,7 @@
 
     .tool-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
     }
 
@@ -194,6 +194,12 @@
       color: #6ee7b7;
       border-color: rgba(16, 185, 129, 0.42);
       background: rgba(16, 185, 129, 0.12);
+    }
+
+    .tool-card--timeline .tool-tag {
+      color: #d8b4fe;
+      border-color: rgba(168, 85, 247, 0.45);
+      background: rgba(168, 85, 247, 0.14);
     }
 
     .tool-name {
@@ -385,6 +391,21 @@
           <span>開く →</span>
         </div>
       </a>
+
+      <a id="portalLinkTimeline" class="tool-card tool-card--timeline" href="./timeline/">
+        <div>
+          <div class="tool-icon-row">
+            <span class="tool-icon" aria-hidden="true">📅</span>
+            <span class="tool-tag">#2011既定・AI最新翻訳</span>
+          </div>
+          <h2 class="tool-name">RBN サーバー進行タイムライン</h2>
+          <p class="tool-desc">英雄世代・ペット・黄金時代（TG）・戦争学院（T11）の解禁予定を日本語でカウントダウン。kingshot.net からワンクリック最新取得＆同盟共有対応。</p>
+        </div>
+        <div class="tool-meta">
+          <code>./timeline/</code>
+          <span>開く →</span>
+        </div>
+      </a>
     </nav>
 
     <!-- 本日のピックアップメンバー（遊び心ON＆アイコン登録時のみ表示） -->
@@ -445,11 +466,13 @@
       const mapEl = document.getElementById("portalLinkMap");
       const bearEl = document.getElementById("portalLinkBear");
       const noticeEl = document.getElementById("portalLinkNotice");
+      const timelineEl = document.getElementById("portalLinkTimeline");
       const dbHostEl = document.getElementById("portalDbHost");
 
       if (mapEl && settings.links.cityMapUrl) mapEl.href = settings.links.cityMapUrl;
       if (bearEl && settings.links.bearNavUrl) bearEl.href = settings.links.bearNavUrl;
       if (noticeEl && settings.links.noticeGenUrl) noticeEl.href = settings.links.noticeGenUrl;
+      if (timelineEl && settings.links.timelineUrl) timelineEl.href = settings.links.timelineUrl;
 
       if (dbHostEl && settings.firebase.databaseUrl) {
         try {

@@ -1,0 +1,26 @@
+{
+  "id": "../timeline/",
+  "name": "ks timeline｜RBN サーバー進行タイムライン",
+  "short_name": "ks timeline",
+  "description": "RBN サーバー進行タイムライン（英雄・ペット・黄金時代・コンテンツ解禁予定）",
+  "start_url": "./",
+  "scope": "../",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "../assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "../assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
