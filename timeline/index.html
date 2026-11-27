@@ -842,12 +842,17 @@
           <input type="password" id="setAiApiKey" placeholder="AIzaSy..." />
         </label>
         <label class="field">
-          URL読込に使うモデル（推奨：gemini-2.5-flash）
-          <select id="setTimelineModel">
-            <option value="gemini-2.5-flash">gemini-2.5-flash（URL直接読込 推奨）</option>
-            <option value="gemini-flash-preview">gemini-flash-preview</option>
-            <option value="gemini-2.5-pro">gemini-2.5-pro（高精度）</option>
-          </select>
+          URL読込に使うモデル（通知ジェネレーターのモデル設定とも自動連携）
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <select id="setTimelineModel" style="flex:1; min-width:190px;">
+              <option value="gemini-2.5-flash">gemini-2.5-flash（URL直接読込 推奨）</option>
+              <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite（高速・軽量）</option>
+              <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+              <option value="gemini-2.5-pro">gemini-2.5-pro（高精度）</option>
+            </select>
+            <button type="button" id="fetchTimelineModelsBtn" style="white-space:nowrap;">🔍 利用可能モデル取得</button>
+          </div>
+          <span id="fetchTimelineModelsMsg" style="font-size:0.72rem; color:var(--muted);"></span>
         </label>
       </div>
 
@@ -1322,53 +1327,168 @@
         ].join("\n");
       }
 
+      function getAvailableStoredModels() {
+        let list = [];
+        try {
+          const raw = localStorage.getItem("ks_available_models");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) list = parsed.filter((m) => typeof m === "string" && m.trim());
+          }
+        } catch (_) {}
+        return list;
+      }
+
+      function populateTimelineModelSelect() {
+        const sel = document.getElementById("setTimelineModel");
+        if (!sel) return;
+        const stored = getAvailableStoredModels();
+        let noticeModel = "";
+        try { noticeModel = String(localStorage.getItem("ks_gemini_model") || "").trim(); } catch (_) {}
+        const preferred = getSelectedTimelineModel();
+        const defaults = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.5-pro"];
+        const merged = [...new Set([preferred, noticeModel, ...stored, ...defaults].filter(Boolean))];
+        sel.innerHTML = "";
+        merged.forEach((m) => {
+          const opt = document.createElement("option");
+          opt.value = m;
+          opt.textContent = m;
+          sel.appendChild(opt);
+        });
+        sel.value = merged.includes(preferred) ? preferred : merged[0];
+      }
+
+      async function discoverAvailableGeminiModels(apiKey) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          let errMsg = `HTTP ${res.status}`;
+          try { const d = await res.json(); if (d?.error?.message) errMsg = d.error.message; } catch (_) {}
+          throw new Error(errMsg);
+        }
+        const data = await res.json();
+        const models = (data.models || [])
+          .filter((m) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
+          .map((m) => String(m.name || "").replace(/^models\//, ""))
+          .filter((name) => /^gemini-/i.test(name) && !/embedding|imagen|veo|tts|audio|live|aqa/i.test(name));
+
+        // 2.5-flash / 2.5-pro / 2.0-flash 系を優先順に並べる
+        const rankModel = (name) => {
+          if (name === "gemini-2.5-flash") return 1;
+          if (/^gemini-2\.5-flash/.test(name)) return 2;
+          if (/^gemini-2\.5-pro/.test(name)) return 3;
+          if (/^gemini-3/.test(name) && /flash/i.test(name)) return 4;
+          if (name === "gemini-2.0-flash") return 5;
+          if (/flash/i.test(name)) return 6;
+          return 10;
+        };
+        const sorted = [...new Set(models)].sort((a, b) => rankModel(a) - rankModel(b) || a.localeCompare(b));
+        if (sorted.length > 0) {
+          try { localStorage.setItem("ks_available_models", JSON.stringify(sorted)); } catch (_) {}
+          populateTimelineModelSelect();
+        }
+        return sorted;
+      }
+
       async function callGeminiTimeline(apiKey, promptText, useUrlTools, onStatus) {
         const primary = getSelectedTimelineModel();
-        const models = [...new Set([primary, "gemini-2.5-flash", "gemini-flash-preview"])];
-        let lastErr = null;
+        let noticeModel = "";
+        try { noticeModel = String(localStorage.getItem("ks_gemini_model") || "").trim(); } catch (_) {}
+        const storedList = getAvailableStoredModels();
 
-        for (let i = 0; i < models.length; i++) {
-          const modelName = models[i];
-          if (onStatus) onStatus(`${modelName} で${useUrlTools ? "URL読込＆日本語翻訳" : "テキスト解析＆日本語翻訳"}中...`);
+        // 候補モデルリストを構築（存在しない古い preview 名は含めない）
+        let candidateModels = [...new Set([
+          primary,
+          "gemini-2.5-flash",
+          noticeModel,
+          ...storedList.filter((m) => /flash|pro/i.test(m)).slice(0, 4),
+          "gemini-2.5-flash-lite",
+          "gemini-2.0-flash",
+          "gemini-flash-latest"
+        ].filter((m) => m && m !== "gemini-flash-preview"))];
 
-          const bodyObj = {
-            contents: [{ parts: [{ text: promptText }] }],
-            generationConfig: { temperature: 0.15 }
-          };
-          if (useUrlTools) {
-            bodyObj.tools = [{ url_context: {} }, { google_search: {} }];
-          }
+        const attemptErrors = [];
+        let triedDiscovery = false;
 
-          try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-            const res = await fetch(url, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(bodyObj)
-            });
-            let data = null;
-            try { data = await res.json(); } catch (_) {}
+        const tryModelList = async (models) => {
+          const toolPlans = useUrlTools
+            ? [
+                { label: "URL直接読込+検索", tools: [{ url_context: {} }, { google_search: {} }] },
+                { label: "Google検索連携", tools: [{ google_search: {} }] },
+                { label: "URL直接読込", tools: [{ url_context: {} }] }
+              ]
+            : [{ label: "テキスト解析", tools: null }];
 
-            if (!res.ok) {
-              const errMsg = data?.error?.message || `HTTP ${res.status}`;
-              lastErr = new Error(`[${modelName}] ${errMsg}`);
-              // url_context 未対応や混雑時は次のモデルへフォールバック
-              if (i < models.length - 1) continue;
-              throw lastErr;
+          for (let i = 0; i < models.length; i++) {
+            const modelName = models[i];
+            for (let t = 0; t < toolPlans.length; t++) {
+              const plan = toolPlans[t];
+              if (onStatus) onStatus(`${modelName}（${plan.label}）で取得＆日本語翻訳中...`);
+
+              const bodyObj = {
+                contents: [{ parts: [{ text: promptText }] }],
+                generationConfig: { temperature: 0.15 }
+              };
+              if (plan.tools) bodyObj.tools = plan.tools;
+
+              try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+                const res = await fetch(url, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(bodyObj)
+                });
+                let data = null;
+                try { data = await res.json(); } catch (_) {}
+
+                if (!res.ok) {
+                  const errMsg = data?.error?.message || `HTTP ${res.status}`;
+                  attemptErrors.push(`[${modelName}/${plan.label}] ${errMsg}`);
+                  // モデル未存在(404)や利用不可・クォータ切れなら別ツールではなく次モデルへ
+                  if (res.status === 404 || res.status === 429 || /not found|not supported for generateContent|quota|rate limit/i.test(errMsg)) {
+                    break;
+                  }
+                  continue;
+                }
+
+                const parts = data?.candidates?.[0]?.content?.parts || [];
+                const rawText = parts.map((p) => p.text || "").join("\n").trim();
+                if (!rawText) {
+                  attemptErrors.push(`[${modelName}/${plan.label}] 応答が空でした`);
+                  continue;
+                }
+                const parsed = extractJsonFromModelText(rawText);
+                // 成功したモデルを記憶して次回から即1発成功させる
+                try { localStorage.setItem(TIMELINE_MODEL_KEY, modelName); } catch (_) {}
+                return { parsed, modelUsed: `${modelName} / ${plan.label}` };
+              } catch (err) {
+                attemptErrors.push(`[${modelName}/${plan.label}] ${err?.message || err}`);
+              }
             }
+          }
+          return null;
+        };
 
-            const parts = data?.candidates?.[0]?.content?.parts || [];
-            const rawText = parts.map((p) => p.text || "").join("\n").trim();
-            if (!rawText) throw new Error(`[${modelName}] 応答が空でした`);
-            const parsed = extractJsonFromModelText(rawText);
-            return { parsed, modelUsed: modelName };
-          } catch (err) {
-            lastErr = err;
-            if (i < models.length - 1) continue;
-            throw err;
+        let result = await tryModelList(candidateModels);
+        if (result) return result;
+
+        // 全候補失敗時は APIキーで実際に使えるモデル一覧を自動取得して再挑戦
+        if (!triedDiscovery) {
+          triedDiscovery = true;
+          try {
+            if (onStatus) onStatus("利用可能なGeminiモデル一覧を自動確認して再試行中...");
+            const discovered = await discoverAvailableGeminiModels(apiKey);
+            const freshModels = discovered.filter((m) => !candidateModels.includes(m)).slice(0, 3);
+            if (freshModels.length > 0) {
+              result = await tryModelList(freshModels);
+              if (result) return result;
+            }
+          } catch (dErr) {
+            attemptErrors.push(`[モデル一覧取得] ${dErr?.message || dErr}`);
           }
         }
-        throw lastErr || new Error("取得に失敗しました");
+
+        throw new Error(attemptErrors.slice(0, 3).join(" ／ ") || "取得に失敗しました");
       }
 
       function normalizeParsedTimeline(parsed, serverId, sourceLabel) {
@@ -1626,7 +1746,7 @@
       function syncSettingsUI() {
         document.getElementById("setFirebaseUrl").value = (sharedSettings.firebase && sharedSettings.firebase.databaseUrl) || RBNSuite.FIREBASE_CONFIG.databaseURL;
         document.getElementById("setAiApiKey").value = (sharedSettings.ai && sharedSettings.ai.studioApiKey) || "";
-        document.getElementById("setTimelineModel").value = getSelectedTimelineModel();
+        populateTimelineModelSelect();
         const mapL = document.getElementById("headerMapLink");
         const bearL = document.getElementById("headerBearLink");
         const noticeL = document.getElementById("headerNoticeLink");
@@ -1708,8 +1828,31 @@
 
       document.getElementById("openSettingsBtn").addEventListener("click", () => {
         syncSettingsUI();
+        const mMsg = document.getElementById("fetchTimelineModelsMsg");
+        if (mMsg) mMsg.textContent = "";
         settingsModal.classList.add("open");
       });
+      const fetchTimelineModelsBtn = document.getElementById("fetchTimelineModelsBtn");
+      if (fetchTimelineModelsBtn) {
+        fetchTimelineModelsBtn.addEventListener("click", async () => {
+          const key = document.getElementById("setAiApiKey").value.trim() || getEffectiveApiKey();
+          const mMsg = document.getElementById("fetchTimelineModelsMsg");
+          if (!key) {
+            if (mMsg) { mMsg.textContent = "先にAPIキーを入力してください。"; mMsg.style.color = "#fca5a5"; }
+            return;
+          }
+          fetchTimelineModelsBtn.disabled = true;
+          if (mMsg) { mMsg.textContent = "利用可能なモデル一覧を取得中..."; mMsg.style.color = "#93c5fd"; }
+          try {
+            const list = await discoverAvailableGeminiModels(key);
+            if (mMsg) { mMsg.textContent = `✅ ${list.length}個のモデルを取得して一覧を更新しました`; mMsg.style.color = "#6ee7b7"; }
+          } catch (e) {
+            if (mMsg) { mMsg.textContent = `エラー：${e?.message || e}`; mMsg.style.color = "#fca5a5"; }
+          } finally {
+            fetchTimelineModelsBtn.disabled = false;
+          }
+        });
+      }
       document.getElementById("closeSettingsBtn").addEventListener("click", () => settingsModal.classList.remove("open"));
       document.getElementById("cancelSettingsBtn").addEventListener("click", () => settingsModal.classList.remove("open"));
       document.getElementById("saveSettingsBtn").addEventListener("click", () => {
