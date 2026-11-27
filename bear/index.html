@@ -1573,6 +1573,9 @@
       <button class="btn-secondary" onclick="closeModal('inspectModal')">閉じる</button>
     </div>
     <div class="modal-body">
+      <div id="inspectRemoteObsoleteNotice" style="display:none; margin-bottom:10px; padding:8px 10px; border-radius:8px; background:rgba(245,158,11,0.14); border:1px solid rgba(245,158,11,0.55); color:#fde68a; font-size:0.78rem; line-height:1.5;">
+        ⚠️ Firebase（<code>bear_master</code>）に旧世代のマスタデータが残っていたため、古いデータでの上書きをブロックし<strong>コード内の最新37名版</strong>で表示しています。下の「☁️ 補正をFirebaseへ保存し全員に配信」を1回実行するとクラウド側も最新37名版へ更新されます。
+      </div>
       <div class="inspect-tabs">
         <button type="button" id="tabInspectPools" class="inspect-tab-btn active" onclick="switchInspectTab('pools')">🛡️🐎🏹 1. 集結主プルダウン兵種一覧（補正）</button>
         <button type="button" id="tabInspectHeroes" class="inspect-tab-btn" onclick="switchInspectTab('heroes')">⚔️ 2. 乗り手英雄・スキル数値一覧（補正）</button>
@@ -1719,9 +1722,13 @@
         </ol>
       </div>
 
+      <div id="dataRemoteObsoleteNotice" style="display:none; margin-bottom:10px; padding:8px 10px; border-radius:8px; background:rgba(245,158,11,0.14); border:1px solid rgba(245,158,11,0.55); color:#fde68a; font-size:0.78rem; line-height:1.5;">
+        ⚠️ Firebase（<code>bear_master</code>）に旧世代のマスタデータが残っていたため、上書きをブロックして<strong>最新のアルテマ37名版</strong>を表示中です。下のパスコード欄から「☁️ Firebaseへ保存して全員に配信」を押すとクラウド側の古いデータも完全に一掃されます。
+      </div>
       <div style="margin: 10px 0; display: flex; gap: 8px; flex-wrap: wrap;">
         <button class="btn-purple" onclick="copyAiUpdatePrompt()">🤖 AI更新用プロンプト＋現行JSONをコピー</button>
         <button class="btn-blue" onclick="exportMasterJson()">📤 現行JSONのみコピー</button>
+        <button class="btn-secondary" onclick="loadDefaultMasterIntoJsonArea()">🔄 最新37名（アルテマ準拠）を欄へ読込</button>
       </div>
 
       <label class="field" style="margin-top: 10px;">
@@ -1802,6 +1809,9 @@
   const DB_NODE = RBNSuite.DB_PATHS.bearMaster;
   const STORAGE_KEY = "rbn_bear_sim_user_v6";
   const MASTER_CACHE_KEY = "rbn_bear_master_cache_v5";
+  // 初期マスタの世代番号（これより古いFirebase/キャッシュは旧版・海外版混入とみなして上書きを拒否）
+  const MASTER_SCHEMA_REVISION = 20261127;
+  let isRemoteMasterObsolete = false;
 
   // 配列型 lv（Firebaseでindex 0のnullが消えて詰まる現象）をオブジェクト形式 {1:.., 5:..} へ正規化
   function normalizeHeroLvMap(rawLv) {
@@ -1848,6 +1858,7 @@
       if (!dataObj || !Array.isArray(dataObj.heroes)) return;
       const sanitized = sanitizeMasterObject(JSON.parse(JSON.stringify(dataObj)));
       sanitized._trustedManual = true;
+      sanitized.masterRevision = Math.max(MASTER_SCHEMA_REVISION, Number(dataObj.masterRevision) || MASTER_SCHEMA_REVISION);
       sanitized.updatedAt = Number(dataObj.updatedAt) || Date.now();
       localStorage.setItem(MASTER_CACHE_KEY, JSON.stringify(sanitized));
     } catch (e) {}
@@ -1859,8 +1870,14 @@
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed || !Array.isArray(parsed.heroes)) return null;
+      const rev = Number(parsed.masterRevision) || 0;
+      if (rev < MASTER_SCHEMA_REVISION) {
+        // 旧世代キャッシュは自動破棄し、コード側の最新37名マスタを使用
+        return null;
+      }
       const sanitized = sanitizeMasterObject(parsed);
       sanitized._trustedManual = true;
+      sanitized.masterRevision = rev;
       sanitized.updatedAt = Number(parsed.updatedAt) || 0;
       return sanitized;
     } catch (e) {
@@ -2004,6 +2021,7 @@
 
   const DEFAULT_MASTER = {
     _trustedManual: true,
+    masterRevision: MASTER_SCHEMA_REVISION,
     version: "S1〜S8完全対応（アルテマ準拠・全37名完全版）",
     rallyPools: {
       inf: [
@@ -2199,6 +2217,16 @@
         const val = snapshot.val();
         updateSyncBadge(true);
         if (val && val.heroes) {
+          const remoteRev = Number(val.masterRevision) || 0;
+          if (remoteRev < MASTER_SCHEMA_REVISION) {
+            // Firebase側が旧世代マスタ（37名不足・海外版混入の可能性あり）の場合は上書きをブロック
+            isRemoteMasterObsolete = true;
+            syncRemoteObsoleteNotices();
+            return;
+          }
+          isRemoteMasterObsolete = false;
+          syncRemoteObsoleteNotices();
+
           const cached = loadMasterCache();
           const remoteUpdatedAt = Number(val.updatedAt) || 0;
           const cachedUpdatedAt = cached ? (Number(cached.updatedAt) || 0) : 0;
@@ -2211,6 +2239,7 @@
           const incoming = sanitizeMasterObject({
             ...val,
             _trustedManual: true,
+            masterRevision: remoteRev,
             updatedAt: remoteUpdatedAt || cachedUpdatedAt || Date.now()
           });
           applyMasterUpdate(incoming, true);
@@ -3076,10 +3105,28 @@
   // ==========================================
   // 7. マスタデータ JSON / AIプロンプト / Firebase 一括更新
   // ==========================================
+  function syncRemoteObsoleteNotices() {
+    const show = isRemoteMasterObsolete ? "block" : "none";
+    const el1 = document.getElementById("inspectRemoteObsoleteNotice");
+    const el2 = document.getElementById("dataRemoteObsoleteNotice");
+    if (el1) el1.style.display = show;
+    if (el2) el2.style.display = show;
+  }
+
   function openDataModal() {
     normalizeMasterConsistency(masterData, true);
+    syncRemoteObsoleteNotices();
     document.getElementById("jsonArea").value = JSON.stringify(masterData, null, 2);
     openModal("dataModal");
+  }
+
+  function loadDefaultMasterIntoJsonArea() {
+    if (!confirm("テキスト欄へ最新のアルテマ準拠・全37名完全版JSONを読み込みますか？\n（この後「Firebaseへ保存して全員に配信」を押すとクラウド側も一掃できます）")) return;
+    const fresh = sanitizeMasterObject(JSON.parse(JSON.stringify(DEFAULT_MASTER)));
+    fresh.masterRevision = MASTER_SCHEMA_REVISION;
+    fresh.updatedAt = Date.now();
+    document.getElementById("jsonArea").value = JSON.stringify(fresh, null, 2);
+    showToast("🔄 最新37名マスタをJSON欄へ読み込みました（配信ボタンを押すとクラウドへ反映されます）", "info");
   }
 
   async function exportMasterJson() {
@@ -3128,6 +3175,7 @@ ${currentJson}`;
     }
     const normalized = normalizeMasterConsistency(sanitizeMasterObject(incoming), true);
     normalized._trustedManual = true;
+    normalized.masterRevision = Math.max(MASTER_SCHEMA_REVISION, Number(incoming.masterRevision) || MASTER_SCHEMA_REVISION);
     normalized.updatedAt = Number(incoming.updatedAt) || Date.now();
     masterData = normalized;
     if (!masterData.tierGuide) {
@@ -3176,9 +3224,12 @@ ${currentJson}`;
       rawParsed.updatedAt = Date.now();
       const parsed = normalizeMasterConsistency(sanitizeMasterObject(rawParsed), true);
       parsed._trustedManual = true;
+      parsed.masterRevision = Math.max(MASTER_SCHEMA_REVISION, Number(rawParsed.masterRevision) || MASTER_SCHEMA_REVISION);
       parsed.updatedAt = rawParsed.updatedAt;
       saveMasterCache(parsed);
       db.ref(DB_NODE).set(parsed).then(() => {
+        isRemoteMasterObsolete = false;
+        syncRemoteObsoleteNotices();
         applyMasterUpdate(parsed, true);
         closeModal("dataModal");
         renderAll();
@@ -3210,6 +3261,7 @@ ${currentJson}`;
   // ==========================================
   function openInspectModal() {
     document.getElementById("inspectVersionBadge").textContent = masterData.version || "S1〜S8完全対応";
+    syncRemoteObsoleteNotices();
     switchInspectTab("pools");
     renderInspectModal();
     openModal("inspectModal");
@@ -3336,10 +3388,16 @@ ${currentJson}`;
 
   function removePoolHero(typeKey, index) {
     const list = masterData.rallyPools[typeKey];
-    if (!Array.isArray(list)) return;
+    if (!Array.isArray(list) || index < 0 || index >= list.length) return;
+    const removedName = list[index];
+    if (!confirm(`「${removedName}」を集結主リストおよびマスタから削除しますか？`)) return;
     list.splice(index, 1);
+    masterData.heroes = (masterData.heroes || []).filter(
+      (h) => !(h && (String(h.name || "").trim() === removedName || String(h.rallyAlias || "").trim() === removedName))
+    );
     masterData._trustedManual = true;
     renderInspectModal();
+    showToast(`「${removedName}」を削除しました（反映／Firebase配信で確定）`);
   }
 
   function addPoolHeroManual() {
@@ -3401,10 +3459,17 @@ ${currentJson}`;
 
   function deleteInspectHero(idx) {
     const h = masterData.heroes[idx];
-    if (!h || !confirm(`「${h.name}」を削除しますか？`)) return;
+    if (!h || !confirm(`「${h.name}」をマスタおよび集結主リストから削除しますか？`)) return;
+    const targetNames = new Set([String(h.name || "").trim(), String(h.rallyAlias || "").trim()].filter(Boolean));
     masterData.heroes.splice(idx, 1);
+    ["inf", "cav", "arc"].forEach((t) => {
+      if (Array.isArray(masterData.rallyPools[t])) {
+        masterData.rallyPools[t] = masterData.rallyPools[t].filter((n) => !targetNames.has(String(n || "").trim()));
+      }
+    });
     masterData._trustedManual = true;
     renderInspectModal();
+    showToast(`「${h.name}」を削除しました（反映／Firebase配信で確定）`);
   }
 
   function applyInspectChangesLocal() {
@@ -3433,9 +3498,12 @@ ${currentJson}`;
     masterData.updatedAt = nowTs;
     const cleaned = normalizeMasterConsistency(sanitizeMasterObject(JSON.parse(JSON.stringify(masterData))), true);
     cleaned._trustedManual = true;
+    cleaned.masterRevision = Math.max(MASTER_SCHEMA_REVISION, Number(masterData.masterRevision) || MASTER_SCHEMA_REVISION);
     cleaned.updatedAt = nowTs;
     saveMasterCache(cleaned);
     db.ref(DB_NODE).set(cleaned).then(() => {
+      isRemoteMasterObsolete = false;
+      syncRemoteObsoleteNotices();
       applyMasterUpdate(cleaned, true);
       renderAll();
       closeModal("inspectModal");
