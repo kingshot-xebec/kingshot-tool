@@ -3137,9 +3137,47 @@
     showToast(ok ? "マスタJSONをコピーしました！" : "テキスト欄のJSONを手動でコピーしてください", ok ? "ok" : "warn");
   }
 
+  function parseMasterJsonInput(rawText) {
+    let cleaned = String(rawText || "").trim();
+    const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fence) cleaned = fence[1].trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch (_) {
+      const fb = cleaned.indexOf("{");
+      const lb = cleaned.lastIndexOf("}");
+      if (fb >= 0 && lb > fb) {
+        return JSON.parse(cleaned.slice(fb, lb + 1));
+      }
+      throw new Error("JSONの形式を解釈できませんでした（余分な文章が含まれていないか確認してください）");
+    }
+  }
+
+  function confirmMasterDiffIfReduced(nextParsed) {
+    const prevHeroes = Array.isArray(masterData.heroes) ? masterData.heroes : [];
+    const nextHeroes = Array.isArray(nextParsed.heroes) ? nextParsed.heroes : [];
+    const nextNameSet = new Set(nextHeroes.map(h => String(h?.name || "").trim()).filter(Boolean));
+    const removedHeroes = prevHeroes
+      .map(h => String(h?.name || "").trim())
+      .filter(n => n && !nextNameSet.has(n));
+
+    if (removedHeroes.length > 0 || nextHeroes.length < prevHeroes.length) {
+      const preview = removedHeroes.slice(0, 8).join(" / ") + (removedHeroes.length > 8 ? ` ほか${removedHeroes.length - 8}名` : "");
+      return confirm(
+        `⚠️ マスタの英雄数が減少、または既存キャラが除外されています！\n` +
+        `現在：${prevHeroes.length}名 → 反映後：${nextHeroes.length}名\n` +
+        (preview ? `除外されるキャラ：${preview}\n\n` : "\n") +
+        `※AIがRキャラや耐久系を勝手に消していないか確認してください。\n` +
+        `意図した削除であれば「OK」、やり直す場合は「キャンセル」を押してください。`
+      );
+    }
+    return true;
+  }
+
   async function copyAiUpdatePrompt() {
     normalizeMasterConsistency(masterData, true);
     const currentJson = JSON.stringify(masterData, null, 2);
+    const currentRev = Math.max(MASTER_SCHEMA_REVISION, Number(masterData.masterRevision) || MASTER_SCHEMA_REVISION);
     const promptText = `あなたはスマホゲーム「キングショット（KingShot）」の巨熊狩猟（Bear Trap）データアナリストです。
 以下の手順とルールに従って、既存の「マスターデータJSON」を最新世代までアップデートした新しいJSONを作成してください。
 
@@ -3148,14 +3186,19 @@
    - キャラクター名・兵種（inf=歩兵 / cav=騎兵 / arc=弓兵）・スキル効果・Lv倍率（"lv": {"1": ..., "2": ..., "3": ..., "4": ..., "5": ...} のオブジェクト形式）・確率・持続ターンなどの基礎マスタデータは、必ず「アルテマ（altema.jp/kingshot）」を最優先で参照して収集してください。
    - アルテマで見つからない・未掲載の項目がある場合のみ、他の日本語攻略サイト（Game8・攻略Wiki・日本語データベース等）を補完的に参照して収集してください。
    - 英語圏のRedditからキャラ情報やスキル数値を直接収集しないでください。
+   - 別ゲーム（ホワイトアウト・サバイバル／Whiteout Survival 等）のキャラクターや、日本語攻略サイトで実装が確認できない海外リーク・推測キャラは絶対に混ぜないでください。
 2. Reddit（r/KingShot）の活用範囲（仕様考察・判定の参考のみ）：
    - Redditの考察・検証情報は、「このスキルは巨熊にダメージが入る／無効になる」「状態異常や重複バフの挙動はどうなるか」「実戦での評価や立ち回り」といった**仕様判定・考察の参考**としてのみ活用してください。
-3. 集結主リスト（rallyPools）の兵種別更新：
-   - rallyPools.inf（歩兵のみ）、rallyPools.cav（騎兵のみ）、rallyPools.arc（弓兵のみ）のそれぞれに、アルテマ等の日本語攻略サイトで確認できた該当兵種のキャラクターのみを登録してください（他兵種を絶対に混ぜないでください）。
-4. 環境Tier表（tierGuide）の同時更新：
-   - JSON内の "version" および "tierGuide"（集結主優先度・乗り手S/A基準・10ターン仕様とReddit検証考察）も、新世代の評価を含めた最新内容へ書き換えてください。
-5. 出力形式の厳守：
+3. 全キャラ収録ルール（R英雄・耐久系を勝手に削除しないこと・超重要）：
+   - R英雄（スミス・フォルスト・エドウィン・オリーブ等の採集・発展系）や、耐久・防衛・状態異常系（ゾーイ・ヘルガ・アルカ等）も、集結主プルダウンから選べるようにするため **heroes配列およびrallyPoolsから絶対に削除せず全キャラ収録** してください。
+   - 巨熊の「乗り手（左端）」に使わないキャラは削除するのではなく、必ず \`"tier": "-"\`、\`"buffType": "invalid"\` として heroes に収録してください（ツール側で乗り手一覧だけ自動非表示になります）。
+4. 集結主リスト（rallyPools）の兵種別更新：
+   - rallyPools.inf（歩兵のみ）、rallyPools.cav（騎兵のみ）、rallyPools.arc（弓兵のみ）のそれぞれに、アルテマ等の日本語攻略サイトで確認できた該当兵種の全キャラクター（R英雄含む）を登録してください（他兵種を絶対に混ぜないでください）。
+5. 環境Tier表（tierGuide）の同時更新：
+   - JSON内の "version"（例：S1〜S9完全対応（アルテマ準拠・全〇〇名完全版））および "tierGuide"（集結主優先度・乗り手S/A基準・10ターン仕様とReddit検証考察）も、新世代の評価を含めた最新内容へ書き換えてください。
+6. 出力形式の厳守：
    - 既存キャラクターの "id" は変更しないでください（ユーザーの個人保存データとスマートマージするため）。
+   - "masterRevision" は削除せず、現在値（${currentRev}）以上の整数（更新日の YYYYMMDD 形式など）を設定してください。
    - "lv" は配列ではなく必ず {"1": 数値, "2": 数値, "3": 数値, "4": 数値, "5": 数値} の形式にしてください。
    - 解説は最小限にし、そのままツールへ貼り付けられる完全なJSONコードブロックのみを出力してください。
 
@@ -3195,13 +3238,17 @@ ${currentJson}`;
 
   function importLocalJson() {
     try {
-      const parsed = JSON.parse(document.getElementById("jsonArea").value);
+      const parsed = parseMasterJsonInput(document.getElementById("jsonArea").value);
+      if (!parsed || !Array.isArray(parsed.heroes)) {
+        throw new Error("不正なJSON形式です（heroes配列が必要です）");
+      }
+      if (!confirmMasterDiffIfReduced(parsed)) return;
       parsed._trustedManual = true;
       const smart = document.getElementById("smartMergeChk").checked;
       applyMasterUpdate(parsed, smart);
       closeModal("dataModal");
       renderAll();
-      showToast("端末内のマスタデータとTier表を更新しました！");
+      showToast(`端末内のマスタデータ（全${masterData.heroes.length}名）とTier表を更新しました！`);
     } catch (e) {
       alert("JSONの読み込みに失敗しました: " + e.message);
     }
@@ -3219,7 +3266,11 @@ ${currentJson}`;
       return alert("Firebaseが初期化されていません。設定を確認してください。");
     }
     try {
-      const rawParsed = JSON.parse(document.getElementById("jsonArea").value);
+      const rawParsed = parseMasterJsonInput(document.getElementById("jsonArea").value);
+      if (!rawParsed || !Array.isArray(rawParsed.heroes)) {
+        throw new Error("不正なJSON形式です（heroes配列が必要です）");
+      }
+      if (!confirmMasterDiffIfReduced(rawParsed)) return;
       rawParsed._trustedManual = true;
       rawParsed.updatedAt = Date.now();
       const parsed = normalizeMasterConsistency(sanitizeMasterObject(rawParsed), true);
@@ -3233,7 +3284,7 @@ ${currentJson}`;
         applyMasterUpdate(parsed, true);
         closeModal("dataModal");
         renderAll();
-        showToast("☁️ Firebaseへ保存し、全メンバーの英雄・Tier表を更新しました！");
+        showToast(`☁️ Firebaseへ保存し、全メンバーの英雄（全${masterData.heroes.length}名）・Tier表を更新しました！`);
       }).catch(err => {
         alert("Firebase書き込みエラー（Realtime Databaseのルールを確認してください）: " + err.message);
       });
